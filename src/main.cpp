@@ -19,6 +19,7 @@ unsigned long g_last_ui_update = 0;
 
 void setup() {
   Serial.begin(115200);
+  Wire.begin();
   esp_log_level_set("*", ESP_LOG_DEBUG);
 
   lv_init();
