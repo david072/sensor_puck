@@ -1,5 +1,6 @@
 #include "ui.h"
 #include <optional>
+#include <string>
 
 namespace ui {
 
@@ -10,6 +11,7 @@ Style::Style() {
     lv_style_set_text_color(&m_container, lv_color_white());
     lv_style_set_border_width(&m_container, 0);
     lv_style_set_pad_all(&m_container, 0);
+    lv_style_set_radius(&m_container, 0);
   }
 
   {
@@ -18,6 +20,7 @@ Style::Style() {
     lv_style_set_text_color(&m_page_container, lv_color_white());
     lv_style_set_border_width(&m_page_container, 0);
     lv_style_set_pad_all(&m_page_container, 0);
+    lv_style_set_radius(&m_page_container, 0);
   }
 
   {
@@ -30,6 +33,12 @@ Style::Style() {
     lv_style_init(&m_large_text);
     lv_style_set_text_color(&m_large_text, lv_color_white());
     lv_style_set_text_font(&m_large_text, &lv_font_montserrat_40);
+  }
+
+  {
+    lv_style_init(&m_medium_text);
+    lv_style_set_text_color(&m_medium_text, lv_color_white());
+    lv_style_set_text_font(&m_medium_text, &lv_font_montserrat_26);
   }
 
   {
@@ -165,5 +174,53 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
 }
 
 void AirQualityPage::update(Data const& data) {}
+
+CompassPage::CompassPage(lv_obj_t* parent)
+    : Page(parent) {
+  auto* cont = flex_container(page_container());
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
+
+  // center information section
+  {
+    m_cardinal_direction = large_text(cont);
+    lv_label_set_text(m_cardinal_direction, "N");
+
+    divider(cont);
+
+    m_angle = large_text(cont);
+    lv_label_set_text(m_angle, "0°");
+  }
+
+  // cardinal direction labels
+  {
+    auto* indicator_circle = lv_obj_create(page_container());
+    lv_obj_set_style_radius(indicator_circle, LV_RADIUS_CIRCLE, 0);
+    lv_obj_set_style_bg_color(indicator_circle, Style::ACCENT_COLOR, 0);
+    lv_obj_set_style_border_width(indicator_circle, 0, 0);
+    lv_obj_set_size(indicator_circle, 25, 25);
+    lv_obj_align(indicator_circle, LV_ALIGN_TOP_MID, 0, 0);
+
+    // NOTE: Temporary!!
+    auto dir = [*this](std::string text) {
+      auto* d = lv_label_create(page_container());
+      lv_obj_add_style(d, Style::the().medium_text(), 0);
+      lv_label_set_text(d, text.c_str());
+      return d;
+    };
+
+    m_north = dir("N");
+    lv_obj_align(m_north, LV_ALIGN_TOP_MID, 0, 0);
+    m_east = dir("E");
+    lv_obj_align(m_east, LV_ALIGN_RIGHT_MID, 0, 0);
+    m_south = dir("S");
+    lv_obj_align(m_south, LV_ALIGN_BOTTOM_MID, 0, 0);
+    m_west = dir("W");
+    lv_obj_align(m_west, LV_ALIGN_LEFT_MID, 0, 0);
+  }
+}
+
+void CompassPage::update(Data const& data) {}
 
 } // namespace ui

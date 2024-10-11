@@ -24,6 +24,7 @@ public:
   lv_style_t const* divider() const { return &m_divider; }
 
   lv_style_t const* large_text() const { return &m_large_text; }
+  lv_style_t const* medium_text() const { return &m_medium_text; }
   lv_style_t const* body_text() const { return &m_body_text; }
   lv_style_t const* caption1() const { return &m_caption1; }
 
@@ -35,6 +36,7 @@ private:
   lv_style_t m_divider;
 
   lv_style_t m_large_text;
+  lv_style_t m_medium_text;
   lv_style_t m_body_text;
   lv_style_t m_caption1;
 };
@@ -81,6 +83,22 @@ private:
   lv_obj_t* m_co2_ppm;
   lv_obj_t* m_temperature;
   lv_obj_t* m_warning_circle;
+};
+
+class CompassPage : public Page {
+public:
+  explicit CompassPage(lv_obj_t* parent);
+
+  void update(Data const& data) override;
+
+private:
+  lv_obj_t* m_cardinal_direction;
+  lv_obj_t* m_angle;
+
+  lv_obj_t* m_north;
+  lv_obj_t* m_south;
+  lv_obj_t* m_east;
+  lv_obj_t* m_west;
 };
 
 } // namespace ui

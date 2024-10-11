@@ -50,6 +50,8 @@ void setup() {
   g_pages.push_back(std::make_unique<ui::Page>(ui::ClockPage(g_ui_container)));
   g_pages.push_back(
       std::make_unique<ui::Page>(ui::AirQualityPage(g_ui_container)));
+  g_pages.push_back(
+      std::make_unique<ui::Page>(ui::CompassPage(g_ui_container)));
 }
 
 void loop() {
