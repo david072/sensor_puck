@@ -1,0 +1,8 @@
+BasedOnStyle: LLVM
+
+PackConstructorInitializers: Never
+DerivePointerAlignment: false
+PointerAlignment: Left
+
+AlwaysBreakTemplateDeclarations: Yes
+QualifierAlignment: Right
