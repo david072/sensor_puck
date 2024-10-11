@@ -46,6 +46,7 @@ void setup() {
   lv_obj_set_scroll_snap_y(g_ui_container, LV_SCROLL_SNAP_START);
   lv_obj_add_flag(g_ui_container, LV_OBJ_FLAG_SCROLL_ONE);
 
+  g_pages.push_back(std::make_unique<ui::Page>(ui::ClockPage(g_ui_container)));
   g_pages.push_back(
       std::make_unique<ui::Page>(ui::AirQualityPage(g_ui_container)));
 }

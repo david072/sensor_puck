@@ -37,6 +37,12 @@ Style::Style() {
     lv_style_set_text_color(&m_caption1, CAPTION_COLOR);
     lv_style_set_text_font(&m_caption1, &lv_font_montserrat_18);
   }
+
+  {
+    lv_style_init(&m_body_text);
+    lv_style_set_text_color(&m_body_text, lv_color_white());
+    lv_style_set_text_font(&m_body_text, &lv_font_montserrat_18);
+  }
 }
 
 Style const& Style::the() {
@@ -52,12 +58,19 @@ lv_obj_t* flex_container(lv_obj_t* parent) {
   lv_obj_add_style(cont, Style::the().container(), 0);
   lv_obj_set_size(cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
   lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
   return cont;
 }
 
 lv_obj_t* large_text(lv_obj_t* parent) {
   auto* text = lv_label_create(parent);
   lv_obj_add_style(text, Style::the().large_text(), 0);
+  return text;
+}
+
+lv_obj_t* body_text(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Style::the().body_text(), 0);
   return text;
 }
 
@@ -82,13 +95,27 @@ Page::Page(lv_obj_t* parent) {
   lv_obj_add_flag(m_container, LV_OBJ_FLAG_SNAPPABLE);
 }
 
+ClockPage::ClockPage(lv_obj_t* parent)
+    : Page(parent) {
+  m_battery_text = body_text(page_container());
+  lv_obj_align(m_battery_text, LV_ALIGN_TOP_MID, 0, 20);
+  lv_label_set_text(m_battery_text, LV_SYMBOL_BATTERY_FULL " 97%");
+
+  auto* cont = flex_container(page_container());
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_size(cont, lv_pct(100), lv_pct(100));
+
+  m_time = large_text(cont);
+  lv_label_set_text(m_time, "13:45");
+}
+
+void ClockPage::update(Data const& data) {}
+
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
     : Page(parent) {
-  // auto* label1 = lv_label_create(page_container());
-  // lv_label_set_text(label1, "bg");
-  // lv_obj_align(label1, LV_ALIGN_CENTER, 0, 0);
-
   m_warning_circle = lv_obj_create(page_container());
+  lv_obj_set_style_radius(m_container, LV_RADIUS_CIRCLE, 0);
   lv_obj_add_style(m_warning_circle, Style::the().container(), 0);
   lv_obj_set_style_bg_color(m_warning_circle, Style::ERROR_COLOR, 0);
   lv_obj_set_style_bg_opa(m_warning_circle, LV_OPA_100, 0);
@@ -96,23 +123,17 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
 
   m_container = flex_container(page_container());
   lv_obj_set_style_radius(m_container, LV_RADIUS_CIRCLE, 0);
-  lv_obj_set_flex_flow(m_container, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(m_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
                         LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_row(m_container, 20, 0);
+  lv_obj_set_style_pad_row(m_container, 10, 0);
   lv_obj_set_style_bg_color(m_container, lv_color_black(), 0);
   lv_obj_set_style_bg_opa(m_container, LV_OPA_100, 0);
   lv_obj_set_size(m_container, lv_pct(90), lv_pct(90));
   lv_obj_align(m_container, LV_ALIGN_CENTER, 0, 0);
 
-  // auto* label = lv_label_create(m_container);
-  // lv_label_set_text(label, "1");
-  // lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
-
   // CO2 PPM
   {
     auto* cont = flex_container(m_container);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_START);
 
@@ -131,7 +152,6 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
   // temperature
   {
     auto* cont = flex_container(m_container);
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
                           LV_FLEX_ALIGN_START);
 

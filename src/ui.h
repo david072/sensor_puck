@@ -24,6 +24,7 @@ public:
   lv_style_t const* divider() const { return &m_divider; }
 
   lv_style_t const* large_text() const { return &m_large_text; }
+  lv_style_t const* body_text() const { return &m_body_text; }
   lv_style_t const* caption1() const { return &m_caption1; }
 
 private:
@@ -34,11 +35,13 @@ private:
   lv_style_t m_divider;
 
   lv_style_t m_large_text;
+  lv_style_t m_body_text;
   lv_style_t m_caption1;
 };
 
 lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
 lv_obj_t* large_text(lv_obj_t* parent = nullptr);
+lv_obj_t* body_text(lv_obj_t* parent = nullptr);
 lv_obj_t* caption1(lv_obj_t* parent = nullptr);
 lv_obj_t* divider(lv_obj_t* parent = nullptr);
 
@@ -54,6 +57,17 @@ public:
 
 private:
   lv_obj_t* m_container;
+};
+
+class ClockPage : public Page {
+public:
+  explicit ClockPage(lv_obj_t* parent);
+
+  void update(Data const& data) override;
+
+private:
+  lv_obj_t* m_time;
+  lv_obj_t* m_battery_text;
 };
 
 class AirQualityPage : public Page {
