@@ -17,6 +17,33 @@ I2C_BM8563 g_rtc(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 
 unsigned long g_last_ui_update = 0;
 
+lv_obj_t* snapping_flex_container(lv_obj_t* parent = lv_scr_act()) {
+  auto* cont = lv_obj_create(parent);
+  lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_START);
+  lv_obj_set_style_bg_opa(cont, 0, 0);
+  lv_obj_set_style_border_width(cont, 0, 0);
+  lv_obj_set_style_pad_all(cont, 0, 0);
+  lv_obj_set_style_margin_all(cont, 0, 0);
+  lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
+  lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ONE);
+  lv_obj_set_size(cont, lv_obj_get_width(lv_scr_act()),
+                  lv_obj_get_height(lv_scr_act()));
+  return cont;
+}
+
+template <typename... Page>
+void add_grouped_pages() {
+  auto* container = snapping_flex_container(g_ui_container);
+  lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
+  lv_obj_set_scroll_dir(container, LV_DIR_HOR);
+  lv_obj_set_scroll_snap_x(container, LV_SCROLL_SNAP_START);
+
+  ([&] { g_pages.push_back(std::make_unique<ui::Page>(Page(container))); }(),
+   ...);
+}
+
 void setup() {
   Serial.begin(115200);
   Wire.begin();
@@ -32,26 +59,14 @@ void setup() {
   lv_obj_set_scroll_dir(lv_scr_act(), LV_DIR_NONE);
   lv_obj_set_style_pad_all(lv_scr_act(), 0, 0);
 
-  g_ui_container = lv_obj_create(lv_scr_act());
-  lv_obj_set_layout(g_ui_container, LV_LAYOUT_FLEX);
+  g_ui_container = snapping_flex_container();
   lv_obj_set_flex_flow(g_ui_container, LV_FLEX_FLOW_COLUMN);
-  lv_obj_set_flex_align(g_ui_container, LV_FLEX_ALIGN_START,
-                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
-  lv_obj_set_size(g_ui_container, lv_pct(1000),
-                  lv_obj_get_height(lv_scr_act()) * 1);
-  lv_obj_set_style_bg_opa(g_ui_container, 0, 0);
-  lv_obj_set_style_border_width(g_ui_container, 0, 0);
   lv_obj_set_scroll_dir(g_ui_container, LV_DIR_VER);
-  lv_obj_set_style_pad_all(g_ui_container, 0, 0);
-  lv_obj_set_style_margin_all(g_ui_container, 0, 0);
   lv_obj_set_scroll_snap_y(g_ui_container, LV_SCROLL_SNAP_START);
-  lv_obj_add_flag(g_ui_container, LV_OBJ_FLAG_SCROLL_ONE);
 
-  g_pages.push_back(std::make_unique<ui::Page>(ui::ClockPage(g_ui_container)));
-  g_pages.push_back(
-      std::make_unique<ui::Page>(ui::AirQualityPage(g_ui_container)));
-  g_pages.push_back(
-      std::make_unique<ui::Page>(ui::CompassPage(g_ui_container)));
+  add_grouped_pages<ui::ClockPage, ui::TimerPage>();
+  add_grouped_pages<ui::AirQualityPage>();
+  add_grouped_pages<ui::CompassPage>();
 }
 
 void loop() {

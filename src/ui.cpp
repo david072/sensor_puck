@@ -121,10 +121,18 @@ ClockPage::ClockPage(lv_obj_t* parent)
 
 void ClockPage::update(Data const& data) {}
 
+TimerPage::TimerPage(lv_obj_t* parent)
+    : Page(parent) {
+  auto* text = large_text(page_container());
+  lv_label_set_text(text, "TimerPage");
+  lv_obj_align(text, LV_ALIGN_CENTER, 0, 0);
+}
+
+void TimerPage::update(Data const& data) {}
+
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
     : Page(parent) {
   m_warning_circle = lv_obj_create(page_container());
-  lv_obj_set_style_radius(m_container, LV_RADIUS_CIRCLE, 0);
   lv_obj_add_style(m_warning_circle, Style::the().container(), 0);
   lv_obj_set_style_bg_color(m_warning_circle, Style::ERROR_COLOR, 0);
   lv_obj_set_style_bg_opa(m_warning_circle, LV_OPA_100, 0);

@@ -72,6 +72,13 @@ private:
   lv_obj_t* m_battery_text;
 };
 
+class TimerPage : public Page {
+public:
+  explicit TimerPage(lv_obj_t* parent);
+
+  void update(Data const& data) override;
+};
+
 class AirQualityPage : public Page {
 public:
   explicit AirQualityPage(lv_obj_t* parent);
