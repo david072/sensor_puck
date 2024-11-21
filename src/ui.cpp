@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "data.h"
 #include "misc/lv_timer.h"
 #include <optional>
 #include <string>
@@ -140,6 +141,8 @@ void ClockPage::update() {
   localtime_r(&time_info, &time);
 
   lv_label_set_text_fmt(m_time, "%02d:%02d", time.tm_hour, time.tm_min);
+  lv_label_set_text_fmt(m_battery_text, LV_SYMBOL_BATTERY_FULL " %d%%",
+                        Data::the().battery_percentage());
 }
 
 TimerPage::TimerPage(lv_obj_t* parent)

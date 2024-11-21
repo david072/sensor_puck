@@ -1,3 +1,4 @@
+#include "data.h"
 #include "ui.h"
 #include <Arduino.h>
 
@@ -15,12 +16,16 @@ constexpr timezone TIMEZONE = {
 
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
+constexpr ulong BATTERY_READ_INTERVAL = 10000;
+constexpr int32_t BATTERY_SAMPLES = 20;
+
 std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
 
 I2C_BM8563 g_rtc(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 
-unsigned long g_last_ui_update = 0;
+ulong g_last_battery_read = 0;
+ulong g_last_ui_update = 0;
 
 lv_obj_t* snapping_flex_container(lv_obj_t* parent = lv_scr_act()) {
   auto* cont = lv_obj_create(parent);
@@ -112,6 +117,18 @@ void setup() {
 }
 
 void loop() {
+  if (millis() - g_last_battery_read >= BATTERY_READ_INTERVAL) {
+    g_last_battery_read = millis();
+
+    int32_t milli_volts = 0;
+    for (int32_t i = 0; i < BATTERY_SAMPLES; ++i) {
+      milli_volts += analogReadMilliVolts(GPIO_NUM_9);
+    }
+
+    milli_volts /= BATTERY_SAMPLES;
+    Data::the().update_battery_percentage(milli_volts);
+  }
+
   lv_tick_inc(millis() - g_last_ui_update);
   g_last_ui_update = millis();
   lv_timer_handler();
