@@ -1,6 +1,5 @@
 #pragma once
 
-#include "data.h"
 #include <lvgl.h>
 
 constexpr lv_color_t make_color(uint8_t r, uint8_t g, uint8_t b) {
@@ -49,25 +48,30 @@ lv_obj_t* divider(lv_obj_t* parent = nullptr);
 
 class Page {
 public:
-  explicit Page(lv_obj_t* parent);
+  explicit Page(lv_obj_t* parent, uint32_t update_interval = 0);
 
   virtual ~Page() {}
 
-  virtual void update(Data const& data) {}
-
   lv_obj_t* page_container() const { return m_container; }
+
+protected:
+  virtual void update() {}
 
 private:
   lv_obj_t* m_container;
+  lv_timer_t* m_update_timer;
 };
 
 class ClockPage : public Page {
 public:
   explicit ClockPage(lv_obj_t* parent);
 
-  void update(Data const& data) override;
+protected:
+  void update() override;
 
 private:
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 1000;
+
   lv_obj_t* m_time;
   lv_obj_t* m_battery_text;
 };
@@ -76,14 +80,16 @@ class TimerPage : public Page {
 public:
   explicit TimerPage(lv_obj_t* parent);
 
-  void update(Data const& data) override;
+protected:
+  void update() override;
 };
 
 class AirQualityPage : public Page {
 public:
   explicit AirQualityPage(lv_obj_t* parent);
 
-  void update(Data const& data) override;
+protected:
+  void update() override;
 
 private:
   lv_obj_t* m_container;
@@ -96,7 +102,8 @@ class CompassPage : public Page {
 public:
   explicit CompassPage(lv_obj_t* parent);
 
-  void update(Data const& data) override;
+protected:
+  void update() override;
 
 private:
   lv_obj_t* m_cardinal_direction;

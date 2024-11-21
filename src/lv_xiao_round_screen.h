@@ -14,16 +14,20 @@ constexpr int LVGL_BUF_SIZE = 100; // Number of rows
 
 constexpr int CHSC6X_I2C_ID = 0x2e;
 constexpr int CHSC6X_READ_POINT_LEN = 5;
-constexpr uint8_t TOUCH_INT = D7;
+constexpr uint8_t TOUCH_INT = GPIO_NUM_12;
 
-constexpr uint8_t BL = D6;
-constexpr uint8_t DC = D3;
-constexpr uint8_t CS = D1;
+constexpr uint8_t DP_BL = GPIO_NUM_48;
+constexpr uint8_t DP_DC = GPIO_NUM_35;
+constexpr uint8_t DP_CS = GPIO_NUM_36;
+constexpr uint8_t DP_SCK = GPIO_NUM_13;
+constexpr uint8_t DP_MOSI = GPIO_NUM_17;
+constexpr uint8_t DP_MISO = GPIO_NUM_14;
 
 uint8_t screen_rotation = 0;
 
 #define SPI_FREQ 20000000 // SPI bus frequency: 20Mhz
-Arduino_DataBus* bus = new Arduino_ESP32SPI(DC, CS, SCK, MOSI, MISO, FSPI);
+Arduino_DataBus* bus =
+    new Arduino_ESP32SPI(DP_DC, DP_CS, DP_SCK, DP_MOSI, DP_MISO, FSPI);
 Arduino_GFX* gfx = new Arduino_GC9A01(bus, -1, screen_rotation, true);
 
 void xiao_disp_flush(lv_display_t* disp, lv_area_t const* area,
@@ -37,8 +41,8 @@ void xiao_disp_flush(lv_display_t* disp, lv_area_t const* area,
 }
 
 void xiao_disp_init() {
-  pinMode(BL, OUTPUT);
-  digitalWrite(BL, HIGH);
+  pinMode(DP_BL, OUTPUT);
+  digitalWrite(DP_BL, HIGH);
 
   gfx->begin(SPI_FREQ);
   gfx->fillScreen(BLACK);

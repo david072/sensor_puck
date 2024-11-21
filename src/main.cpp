@@ -1,6 +1,5 @@
 #include "ui.h"
 #include <Arduino.h>
-#include <memory>
 
 #define USE_ARDUINO_GFX_LIBRARY
 #include "lv_xiao_round_screen.h"
@@ -8,9 +7,15 @@
 #include <I2C_BM8563.h>
 #include <lvgl.h>
 
+/// MEZ time zone
+constexpr timezone TIMEZONE = {
+    .tz_minuteswest = 1 * 60,
+    .tz_dsttime = DST_WET,
+};
+
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
-std::vector<std::unique_ptr<ui::Page>> g_pages = {};
+std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
 
 I2C_BM8563 g_rtc(I2C_BM8563_DEFAULT_ADDRESS, Wire);
@@ -40,18 +45,55 @@ void add_grouped_pages() {
   lv_obj_set_scroll_dir(container, LV_DIR_HOR);
   lv_obj_set_scroll_snap_x(container, LV_SCROLL_SNAP_START);
 
-  ([&] { g_pages.push_back(std::make_unique<ui::Page>(Page(container))); }(),
-   ...);
+  ([&] { g_pages.push_back(new Page(container)); }(), ...);
+}
+
+I2C_BM8563_TimeTypeDef get_rtc_time() {
+  I2C_BM8563_TimeTypeDef time;
+  g_rtc.getTime(&time);
+  return time;
+}
+
+I2C_BM8563_DateTypeDef get_rtc_date() {
+  I2C_BM8563_DateTypeDef date;
+  g_rtc.getDate(&date);
+  return date;
+}
+
+void update_system_time_from_rtc() {
+  auto rtc_time = get_rtc_time();
+  auto rtc_date = get_rtc_date();
+
+  tm rt = {
+      .tm_sec = rtc_time.seconds,
+      .tm_min = rtc_time.minutes,
+      .tm_hour = rtc_time.hours,
+      .tm_mday = rtc_date.date,
+      .tm_mon = rtc_date.month - 1,
+      .tm_year = rtc_date.year,
+  };
+
+  timeval time = {
+      .tv_sec = mktime(&rt),
+      .tv_usec = 0,
+  };
+  settimeofday(&time, &TIMEZONE);
 }
 
 void setup() {
   Serial.begin(115200);
+  gpio_reset_pin(GPIO_NUM_8);
+  gpio_reset_pin(GPIO_NUM_7);
+  Wire.setPins(GPIO_NUM_8, GPIO_NUM_7);
   Wire.begin();
   esp_log_level_set("*", ESP_LOG_DEBUG);
 
   lv_init();
   lv_xiao_disp_init();
   lv_xiao_touch_init();
+
+  g_rtc.begin();
+  update_system_time_from_rtc();
 
   lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
   lv_obj_set_style_text_color(lv_scr_act(), lv_color_white(), 0);

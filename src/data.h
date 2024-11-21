@@ -1,3 +1,8 @@
 #pragma once
 
-class Data {};
+class Data {
+public:
+  static Data& the();
+
+private:
+};

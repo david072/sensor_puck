@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "misc/lv_timer.h"
 #include <optional>
 #include <string>
 
@@ -96,16 +97,28 @@ lv_obj_t* divider(lv_obj_t* parent) {
   return divider;
 }
 
-Page::Page(lv_obj_t* parent) {
+Page::Page(lv_obj_t* parent, uint32_t update_period) {
   m_container = lv_obj_create(parent);
   lv_obj_set_size(m_container, lv_obj_get_width(lv_scr_act()),
                   lv_obj_get_height(lv_scr_act()));
   lv_obj_add_style(m_container, Style::the().page_container(), 0);
   lv_obj_add_flag(m_container, LV_OBJ_FLAG_SNAPPABLE);
+
+  m_update_timer = lv_timer_create(
+      [](lv_timer_t* timer) {
+        auto* thiss = static_cast<Page*>(lv_timer_get_user_data(timer));
+        thiss->update();
+      },
+      update_period, this);
+  if (update_period == 0) {
+    lv_timer_pause(m_update_timer);
+  }
+
+  lv_timer_set_repeat_count(m_update_timer, -1);
 }
 
 ClockPage::ClockPage(lv_obj_t* parent)
-    : Page(parent) {
+    : Page(parent, UPDATE_INTERVAL_MS) {
   m_battery_text = body_text(page_container());
   lv_obj_align(m_battery_text, LV_ALIGN_TOP_MID, 0, 20);
   lv_label_set_text(m_battery_text, LV_SYMBOL_BATTERY_FULL " 97%");
@@ -119,7 +132,15 @@ ClockPage::ClockPage(lv_obj_t* parent)
   lv_label_set_text(m_time, "13:45");
 }
 
-void ClockPage::update(Data const& data) {}
+void ClockPage::update() {
+  time_t time_info;
+  time(&time_info);
+
+  tm time;
+  localtime_r(&time_info, &time);
+
+  lv_label_set_text_fmt(m_time, "%02d:%02d", time.tm_hour, time.tm_min);
+}
 
 TimerPage::TimerPage(lv_obj_t* parent)
     : Page(parent) {
@@ -128,7 +149,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
   lv_obj_align(text, LV_ALIGN_CENTER, 0, 0);
 }
 
-void TimerPage::update(Data const& data) {}
+void TimerPage::update() {}
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
     : Page(parent) {
@@ -181,7 +202,7 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
   }
 }
 
-void AirQualityPage::update(Data const& data) {}
+void AirQualityPage::update() {}
 
 CompassPage::CompassPage(lv_obj_t* parent)
     : Page(parent) {
@@ -229,6 +250,6 @@ CompassPage::CompassPage(lv_obj_t* parent)
   }
 }
 
-void CompassPage::update(Data const& data) {}
+void CompassPage::update() {}
 
 } // namespace ui
