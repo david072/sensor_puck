@@ -1,6 +1,7 @@
 #include "data.h"
 #include "ui.h"
 #include <Adafruit_BME680.h>
+#include <Adafruit_LSM6DSOX.h>
 #include <Arduino.h>
 
 #define USE_ARDUINO_GFX_LIBRARY
@@ -26,12 +27,39 @@ std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
 
 I2C_BM8563 g_rtc(I2C_BM8563_DEFAULT_ADDRESS, Wire);
-
 Adafruit_BME680 g_bme688;
+Adafruit_LSM6DSOX g_lsm6;
 
 ulong g_last_battery_read = 0;
 ulong g_last_bme_read = 0;
+ulong g_last_lsm_read = 0;
 ulong g_last_ui_update = 0;
+
+void disable_scroll_on_fullscreen_enter(lv_obj_t* obj) {
+  lv_obj_add_event_cb(
+      obj,
+      [](lv_event_t* event) {
+        lv_obj_set_scroll_dir(
+            static_cast<lv_obj_t*>(lv_event_get_user_data(event)), LV_DIR_NONE);
+      },
+      ui::Style::the().enter_fullscreen_event(), obj);
+}
+
+void enable_scroll_on_fullscreen_exit(lv_obj_t* obj, lv_dir_t dir) {
+  struct Args {
+    lv_obj_t* target;
+    lv_dir_t dir;
+  };
+
+  lv_obj_add_event_cb(
+      obj,
+      [](lv_event_t* event) {
+        auto* args = static_cast<Args*>(lv_event_get_user_data(event));
+        lv_obj_set_scroll_dir(args->target, args->dir);
+      },
+      ui::Style::the().exit_fullscreen_event(),
+      new Args{.target = obj, .dir = dir});
+}
 
 lv_obj_t* snapping_flex_container(lv_obj_t* parent = lv_scr_act()) {
   auto* cont = lv_obj_create(parent);
@@ -55,6 +83,10 @@ void add_grouped_pages() {
   lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
   lv_obj_set_scroll_dir(container, LV_DIR_HOR);
   lv_obj_set_scroll_snap_x(container, LV_SCROLL_SNAP_START);
+  lv_obj_add_flag(container, LV_OBJ_FLAG_EVENT_BUBBLE);
+
+  disable_scroll_on_fullscreen_enter(container);
+  enable_scroll_on_fullscreen_exit(container, LV_DIR_HOR);
 
   ([&] { g_pages.push_back(new Page(container)); }(), ...);
 }
@@ -107,6 +139,7 @@ void setup() {
   update_system_time_from_rtc();
 
   g_bme688.begin(0x76);
+  g_lsm6.begin_I2C();
 
   lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
   lv_obj_set_style_text_color(lv_scr_act(), lv_color_white(), 0);
@@ -118,6 +151,9 @@ void setup() {
   lv_obj_set_flex_flow(g_ui_container, LV_FLEX_FLOW_COLUMN);
   lv_obj_set_scroll_dir(g_ui_container, LV_DIR_VER);
   lv_obj_set_scroll_snap_y(g_ui_container, LV_SCROLL_SNAP_START);
+
+  disable_scroll_on_fullscreen_enter(g_ui_container);
+  enable_scroll_on_fullscreen_exit(g_ui_container, LV_DIR_VER);
 
   add_grouped_pages<ui::ClockPage, ui::TimerPage>();
   add_grouped_pages<ui::AirQualityPage>();
@@ -137,13 +173,25 @@ void loop() {
     Data::the()->update_battery_percentage(milli_volts);
   }
 
-  if (millis() - g_last_bme_read >= BME_READ_INTERVAL) {
-    g_last_bme_read = millis();
+  // if (millis() - g_last_bme_read >= BME_READ_INTERVAL) {
+  //   g_last_bme_read = millis();
 
-    auto temp = g_bme688.readTemperature();
-    auto humidity = g_bme688.readHumidity();
+  //   auto temp = g_bme688.readTemperature();
+  //   auto humidity = g_bme688.readHumidity();
 
-    printf("temp: %f °C, hum: %f\n", temp, humidity);
+  //   printf("temp: %f °C, hum: %f\n", temp, humidity);
+  // }
+
+  if (millis() - g_last_lsm_read >= 50) {
+    g_last_lsm_read = millis();
+
+    sensors_event_t accel;
+    sensors_event_t gyro;
+    sensors_event_t temp;
+    g_lsm6.getEvent(&accel, &gyro, &temp);
+
+    Data::the()->update_gyroscope(
+        Vector3(gyro.gyro.pitch, gyro.gyro.heading, gyro.gyro.roll));
   }
 
   lv_tick_inc(millis() - g_last_ui_update);

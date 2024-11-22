@@ -10,6 +10,8 @@ constexpr lv_color_t make_color(uint8_t v) { return make_color(v, v, v); }
 
 namespace ui {
 
+lv_event_code_t register_lv_event_id();
+
 class Style {
 public:
   static constexpr lv_color_t ACCENT_COLOR = make_color(0x62, 0x85, 0xF6);
@@ -27,6 +29,13 @@ public:
   lv_style_t const* body_text() const { return &m_body_text; }
   lv_style_t const* caption1() const { return &m_caption1; }
 
+  lv_event_code_t enter_fullscreen_event() const {
+    return m_enter_fullscreen_event;
+  }
+  lv_event_code_t exit_fullscreen_event() const {
+    return m_exit_fullscreen_event;
+  }
+
 private:
   Style();
 
@@ -38,6 +47,9 @@ private:
   lv_style_t m_medium_text;
   lv_style_t m_body_text;
   lv_style_t m_caption1;
+
+  lv_event_code_t m_enter_fullscreen_event;
+  lv_event_code_t m_exit_fullscreen_event;
 };
 
 lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
@@ -49,8 +61,7 @@ lv_obj_t* divider(lv_obj_t* parent = nullptr);
 class Page {
 public:
   explicit Page(lv_obj_t* parent, uint32_t update_interval = 0);
-
-  virtual ~Page() {}
+  ~Page();
 
   lv_obj_t* page_container() const { return m_container; }
 
@@ -74,6 +85,13 @@ private:
 
   lv_obj_t* m_time;
   lv_obj_t* m_battery_text;
+
+  unsigned long m_press_start = 0;
+  lv_point_t m_press_start_point;
+  bool m_in_fullscreen = false;
+
+  int m_hour = 13;
+  int m_minute = 30;
 };
 
 class TimerPage : public Page {
@@ -113,6 +131,29 @@ private:
   lv_obj_t* m_south;
   lv_obj_t* m_east;
   lv_obj_t* m_west;
+};
+
+class RotaryInputPage : public Page {
+public:
+  explicit RotaryInputPage(lv_obj_t* parent, int& value);
+  ~RotaryInputPage();
+
+protected:
+  void update() override;
+
+private:
+  static constexpr float MIN_ROTATION_THRESHOLD = 1.0;
+  static constexpr int32_t BUTTON_OFFSET = 50;
+
+  unsigned long m_last_update = 0;
+  float m_angle = 0;
+
+  int m_value = 0;
+  int& m_target_value;
+
+  lv_obj_t* m_text;
+  lv_obj_t* m_confirm_button;
+  lv_obj_t* m_cancel_button;
 };
 
 } // namespace ui
