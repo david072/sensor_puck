@@ -1,9 +1,9 @@
 #include "data.h"
 #include <cstdio>
 
-Data& Data::the() {
-  static Data data = Data();
-  return data;
+Mutex<Data>::Guard Data::the() {
+  static Mutex<Data> data = Data();
+  return data.lock();
 }
 
 void Data::update_battery_percentage(uint32_t voltage) {

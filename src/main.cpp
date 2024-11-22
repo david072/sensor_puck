@@ -1,5 +1,6 @@
 #include "data.h"
 #include "ui.h"
+#include <Adafruit_BME680.h>
 #include <Arduino.h>
 
 #define USE_ARDUINO_GFX_LIBRARY
@@ -19,12 +20,17 @@ constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 constexpr ulong BATTERY_READ_INTERVAL = 10000;
 constexpr int32_t BATTERY_SAMPLES = 20;
 
+constexpr ulong BME_READ_INTERVAL = 10000;
+
 std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
 
 I2C_BM8563 g_rtc(I2C_BM8563_DEFAULT_ADDRESS, Wire);
 
+Adafruit_BME680 g_bme688;
+
 ulong g_last_battery_read = 0;
+ulong g_last_bme_read = 0;
 ulong g_last_ui_update = 0;
 
 lv_obj_t* snapping_flex_container(lv_obj_t* parent = lv_scr_act()) {
@@ -100,6 +106,8 @@ void setup() {
   g_rtc.begin();
   update_system_time_from_rtc();
 
+  g_bme688.begin(0x76);
+
   lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
   lv_obj_set_style_text_color(lv_scr_act(), lv_color_white(), 0);
   lv_obj_set_style_border_width(lv_scr_act(), 0, 0);
@@ -126,7 +134,16 @@ void loop() {
     }
 
     milli_volts /= BATTERY_SAMPLES;
-    Data::the().update_battery_percentage(milli_volts);
+    Data::the()->update_battery_percentage(milli_volts);
+  }
+
+  if (millis() - g_last_bme_read >= BME_READ_INTERVAL) {
+    g_last_bme_read = millis();
+
+    auto temp = g_bme688.readTemperature();
+    auto humidity = g_bme688.readHumidity();
+
+    printf("temp: %f °C, hum: %f\n", temp, humidity);
   }
 
   lv_tick_inc(millis() - g_last_ui_update);

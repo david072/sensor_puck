@@ -1,14 +1,3 @@
 CompileFlags:
-  Add:
-    # - -mlong-calls
-    - -DSSIZE_MAX
-    - -DLWIP_NO_UNISTD_H=1
-    - -Dssize_t=long
-    - -D_SSIZE_T_DECLARED
-  Remove:
-    - -fno-tree-switch-conversion
-    - -mtext-section-literals
-    - -mlongcalls
-    - -fstrict-volatile-bitfields
-    - -free
-    - -fipa-pta
+  Add: [-isysroot=/Users/dg/.espressif/tools/xtensa-esp-elf/esp-13.2.0_20240530/xtensa-esp-elf]
+  Remove: [-fno-tree-switch-conversion, -mtext-section-literals, -mlongcalls, -fstrict-volatile-bitfields]
