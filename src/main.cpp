@@ -1,4 +1,5 @@
 #include "data.h"
+#include "pages.h"
 #include "ui.h"
 #include <Adafruit_BME680.h>
 #include <Adafruit_LSM6DSOX.h>
@@ -42,7 +43,7 @@ void disable_scroll_on_fullscreen_enter(lv_obj_t* obj) {
         lv_obj_set_scroll_dir(
             static_cast<lv_obj_t*>(lv_event_get_user_data(event)), LV_DIR_NONE);
       },
-      ui::Style::the().enter_fullscreen_event(), obj);
+      ui::Ui::the().enter_fullscreen_event(), obj);
 }
 
 void enable_scroll_on_fullscreen_exit(lv_obj_t* obj, lv_dir_t dir) {
@@ -57,7 +58,7 @@ void enable_scroll_on_fullscreen_exit(lv_obj_t* obj, lv_dir_t dir) {
         auto* args = static_cast<Args*>(lv_event_get_user_data(event));
         lv_obj_set_scroll_dir(args->target, args->dir);
       },
-      ui::Style::the().exit_fullscreen_event(),
+      ui::Ui::the().exit_fullscreen_event(),
       new Args{.target = obj, .dir = dir});
 }
 
