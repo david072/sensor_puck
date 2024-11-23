@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <esp_event.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <memory>
@@ -96,18 +97,33 @@ struct Vector3 {
   float z;
 };
 
+ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
+
 class Data {
 public:
+  enum Event : int32_t {
+    TimeChanged,
+  };
+
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
   /// [mV]
   static constexpr uint32_t MAX_BATTERY_VOLTAGE = 2150;
   /// [mV]
   static constexpr uint32_t MIN_BATTERY_VOLTAGE = 1800;
 
+  /// MEZ time zone
+  static constexpr timezone TIMEZONE = {
+      .tz_minuteswest = 1 * 60,
+      .tz_dsttime = DST_WET,
+  };
+
   static Mutex<Data>::Guard the();
 
   void update_battery_percentage(uint32_t voltage);
   void update_gyroscope(Vector3 v);
+
+  tm get_time() const;
+  void set_time(tm time) const;
 
   uint8_t battery_percentage() const { return m_battery_percentage; }
 

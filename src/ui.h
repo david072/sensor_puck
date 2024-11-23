@@ -2,7 +2,6 @@
 
 #include <functional>
 #include <lvgl.h>
-#include <optional>
 
 constexpr lv_color_t make_color(uint8_t r, uint8_t g, uint8_t b) {
   return {.blue = b, .green = g, .red = r};
@@ -12,17 +11,22 @@ constexpr lv_color_t make_color(uint8_t v) { return make_color(v, v, v); }
 
 namespace ui {
 
-constexpr unsigned long LONG_PRESS_DURATION_MS = 500;
+constexpr unsigned long LONG_PRESS_DURATION_MS = 300;
 
 lv_event_code_t register_lv_event_id();
 lv_point_t get_last_touch_point();
+
+template <typename T>
+T* get_event_user_data(lv_event_t* event) {
+  return static_cast<T*>(lv_event_get_user_data(event));
+}
 
 /// Long press detection for widgets that are children of scrollable widgets
 void on_long_press(lv_obj_t* obj, std::function<void()> callback);
 
 class Page {
 public:
-  explicit Page(lv_obj_t* parent, uint32_t update_interval = 0);
+  explicit Page(lv_obj_t* parent = NULL, uint32_t update_interval = 0);
   ~Page();
 
   lv_obj_t* page_container() const { return m_container; }
@@ -75,23 +79,33 @@ public:
   lv_event_code_t exit_fullscreen_event() const {
     return m_exit_fullscreen_event;
   }
+  lv_event_code_t pop_fullscreen_event() const {
+    return m_pop_fullscreen_event;
+  }
 
   static Ui& the();
 
   // TODO: This should not be heap allocated, as it causes a small lag when
   // entering fullscreen, however I don't know how to do that right now.
-  void enter_fullscreen(Page* page);
+  void enter_fullscreen(lv_obj_t* source, Page* page);
   void exit_fullscreen();
-  bool in_fullscreen() { return m_fullscreen_page != NULL; }
+  bool in_fullscreen() { return !m_fullscreen_pages.empty(); }
 
 private:
   Ui();
 
   Style m_style;
 
-  Page* m_fullscreen_page{};
+  struct FullscreenPage {
+    Page* page;
+    /// Used to send enter/exit fullscreen events
+    lv_obj_t* source;
+  };
+
+  std::vector<FullscreenPage> m_fullscreen_pages{};
   lv_event_code_t m_enter_fullscreen_event;
   lv_event_code_t m_exit_fullscreen_event;
+  lv_event_code_t m_pop_fullscreen_event;
 };
 
 lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
@@ -99,5 +113,10 @@ lv_obj_t* large_text(lv_obj_t* parent = nullptr);
 lv_obj_t* body_text(lv_obj_t* parent = nullptr);
 lv_obj_t* caption1(lv_obj_t* parent = nullptr);
 lv_obj_t* divider(lv_obj_t* parent = nullptr);
+lv_obj_t* spacer(lv_obj_t* parent, int width, int height);
+
+lv_obj_t* fullscreen_back_button(lv_obj_t* parent);
+lv_obj_t* text_button(lv_obj_t* parent, char const* text,
+                      lv_event_cb_t on_short_click, void* user_data);
 
 } // namespace ui

@@ -1,5 +1,6 @@
 #include "pages.h"
 #include "data.h"
+#include "layouts/flex/lv_flex.h"
 #include <Arduino.h>
 #include <ui.h>
 
@@ -23,22 +24,98 @@ ClockPage::ClockPage(lv_obj_t* parent)
   std::function<void()> cb = [this]() {
     if (Ui::the().in_fullscreen())
       return;
-    Ui::the().enter_fullscreen(new RotaryInputPage(page_container(), m_hour));
+    Ui::the().enter_fullscreen(page_container(), new ClockSettingsPage());
   };
   on_long_press(page_container(), cb);
+
+  update();
 }
 
 void ClockPage::update() {
-  // time_t time_info;
-  // time(&time_info);
-
-  // tm time;
-  // localtime_r(&time_info, &time);
-
-  // lv_label_set_text_fmt(m_time, "%02d:%02d", time.tm_hour, time.tm_min);
-  lv_label_set_text_fmt(m_time, "%02d:%02d", m_hour, m_minute);
+  auto time = Data::the()->get_time();
+  lv_label_set_text_fmt(m_time, "%02d:%02d", time.tm_hour, time.tm_min);
   lv_label_set_text_fmt(m_battery_text, LV_SYMBOL_BATTERY_FULL " %d%%",
                         Data::the()->battery_percentage());
+}
+
+ClockSettingsPage::ClockSettingsPage()
+    : Page() {
+
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  auto* time_container = flex_container(page_container());
+  lv_obj_set_flex_flow(time_container, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(time_container, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  m_time = Data::the()->get_time();
+
+#define BUTTON_WITH_LABEL(propery_to_modify, min, max)                         \
+  [this, time_container]() {                                                   \
+    auto* button = lv_button_create(time_container);                           \
+    lv_obj_add_event_cb(                                                       \
+        button,                                                                \
+        [](lv_event_t* event) {                                                \
+          auto* p = get_event_user_data<ClockSettingsPage>(event);             \
+          auto* rotary_input_page = new RotaryInputPage(p->propery_to_modify); \
+          rotary_input_page->set_min(min);                                     \
+          rotary_input_page->set_max(max);                                     \
+          Ui::the().enter_fullscreen(p->page_container(), rotary_input_page);  \
+        },                                                                     \
+        LV_EVENT_SHORT_CLICKED, this);                                         \
+    return body_text(button);                                                  \
+  }()
+
+  auto separator_colon = [this, time_container]() {
+    auto* label = body_text(time_container);
+    lv_label_set_text(label, ":");
+  };
+
+  m_hour_label = BUTTON_WITH_LABEL(m_time.tm_hour, 0, 24);
+  separator_colon();
+  m_minute_label = BUTTON_WITH_LABEL(m_time.tm_min, 0, 60);
+  separator_colon();
+  m_second_label = BUTTON_WITH_LABEL(m_time.tm_sec, 0, 60);
+
+#undef BUTTON_WITH_LABEL
+
+  spacer(page_container(), 0, 10);
+
+  auto* controls_container = flex_container(page_container());
+  lv_obj_set_flex_flow(controls_container, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(controls_container, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  text_button(
+      controls_container, LV_SYMBOL_CLOSE,
+      [](auto) { Ui::the().exit_fullscreen(); }, NULL);
+
+  text_button(
+      controls_container, LV_SYMBOL_OK,
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<ClockSettingsPage>(event);
+        Data::the()->set_time(p->m_time);
+        Ui::the().exit_fullscreen();
+      },
+      this);
+
+  lv_obj_add_event_cb(
+      page_container(),
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<ClockSettingsPage>(event);
+        p->update();
+      },
+      Ui::the().pop_fullscreen_event(), this);
+
+  update();
+}
+
+void ClockSettingsPage::update() {
+  lv_label_set_text_fmt(m_hour_label, "%02d", m_time.tm_hour);
+  lv_label_set_text_fmt(m_minute_label, "%02d", m_time.tm_min);
+  lv_label_set_text_fmt(m_second_label, "%02d", m_time.tm_sec);
 }
 
 TimerPage::TimerPage(lv_obj_t* parent)
@@ -151,9 +228,10 @@ CompassPage::CompassPage(lv_obj_t* parent)
 
 void CompassPage::update() {}
 
-RotaryInputPage::RotaryInputPage(lv_obj_t* parent, int& value)
-    : Page(parent, 50),
-      m_target_value(value) {
+RotaryInputPage::RotaryInputPage(int& value, float units_per_angle)
+    : Page(NULL, 50),
+      m_target_value(value),
+      m_units_per_angle(units_per_angle) {
   m_text = body_text(page_container());
   lv_label_set_text(m_text, "Hello");
   lv_obj_align(m_text, LV_ALIGN_CENTER, 0, 0);
@@ -195,11 +273,13 @@ void RotaryInputPage::update() {
   auto elapsed = static_cast<float>(millis() - m_last_update) / 1000.0;
   auto yaw_speed = Data::the()->gyroscope().y;
 
-  printf("yaw: %f, angle: %f\n", yaw_speed, m_angle);
-
   if (abs(yaw_speed) >= MIN_ROTATION_THRESHOLD) {
     m_angle += yaw_speed * elapsed;
-    m_value = round(m_angle / 10.0);
+    m_value = round(m_angle * m_units_per_angle);
+    if (m_min)
+      m_value = max(m_target_value + m_value, *m_min) - m_target_value;
+    if (m_max)
+      m_value = min(m_target_value + m_value, *m_max) - m_target_value;
   }
 
   lv_label_set_text_fmt(m_text, "%d", m_target_value + m_value);

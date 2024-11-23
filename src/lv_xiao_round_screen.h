@@ -14,6 +14,7 @@ constexpr int LVGL_BUF_SIZE = 100; // Number of rows
 
 constexpr int CHSC6X_I2C_ID = 0x2e;
 constexpr int CHSC6X_READ_POINT_LEN = 5;
+constexpr long TOUCH_RELEASE_DEBOUNCE_MS = 50;
 constexpr uint8_t TOUCH_INT = GPIO_NUM_12;
 
 constexpr uint8_t DP_BL = GPIO_NUM_48;
@@ -59,16 +60,12 @@ void lv_xiao_disp_init() {
 }
 
 bool chsc6x_is_pressed() {
-  return digitalRead(TOUCH_INT) == LOW;
-
-  // Debouncing. Done by the original library, doesn't seem to really change
-  // anything
-  // if (digitalRead(TOUCH_INT) != LOW) {
-  //   delay(1);
-  //   if (digitalRead(TOUCH_INT) != LOW)
-  //     return false;
-  // }
-  // return true;
+  if (digitalRead(TOUCH_INT) != LOW) {
+    delay(1);
+    if (digitalRead(TOUCH_INT) != LOW)
+      return false;
+  }
+  return true;
 }
 
 void chsc6x_convert_xy(uint8_t* x, uint8_t* y) {
@@ -97,15 +94,26 @@ void chsc6x_get_xy(lv_coord_t* x, lv_coord_t* y) {
 }
 
 void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
+  static ulong last_pressed = 0;
+  static lv_coord_t last_touch_x = 0;
+  static lv_coord_t last_touch_y = 0;
+
   if (!chsc6x_is_pressed()) {
-    data->state = LV_INDEV_STATE_RELEASED;
+    if (millis() - last_pressed > TOUCH_RELEASE_DEBOUNCE_MS) {
+      data->state = LV_INDEV_STATE_RELEASED;
+    }
     return;
   }
 
   lv_coord_t touch_x, touch_y;
   chsc6x_get_xy(&touch_x, &touch_y);
 
-  if (touch_x > SCREEN_WIDTH || touch_y > SCREEN_WIDTH) {
+  data->state = LV_INDEV_STATE_PRESSED;
+  data->point.x = last_touch_x;
+  data->point.y = last_touch_y;
+
+  if (touch_x < 0 || touch_x > SCREEN_WIDTH || touch_y < 0 ||
+      touch_y > SCREEN_WIDTH) {
     ESP_LOGD("Display", "Filtered out-of-bounds position (%d, %d)", touch_x,
              touch_y);
     return;
@@ -121,8 +129,9 @@ void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
 
   data->state = LV_INDEV_STATE_PRESSED;
   ESP_LOGD("Display", "Touch %d, %d", touch_x, touch_y);
-  data->point.x = touch_x;
-  data->point.y = touch_y;
+  last_pressed = millis();
+  data->point.x = last_touch_x = touch_x;
+  data->point.y = last_touch_y = touch_y;
 }
 
 void lv_xiao_touch_init() {
