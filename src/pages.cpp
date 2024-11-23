@@ -235,7 +235,6 @@ RotaryInputPage::RotaryInputPage(int& value, float units_per_angle)
       m_target_value(value),
       m_units_per_angle(units_per_angle) {
   m_text = body_text(page_container());
-  lv_label_set_text(m_text, "Hello");
   lv_obj_align(m_text, LV_ALIGN_CENTER, 0, 0);
   lv_obj_set_style_transform_pivot_x(m_text, lv_pct(50), 0);
   lv_obj_set_style_transform_pivot_y(m_text, lv_pct(50), 0);
@@ -284,15 +283,19 @@ void RotaryInputPage::update() {
       m_value = min(m_target_value + m_value, *m_max) - m_target_value;
   }
 
-  lv_label_set_text_fmt(m_text, "%d", m_target_value + m_value);
+  if (m_update_label) {
+    m_update_label(m_text, m_target_value + m_value);
+  } else {
+    lv_label_set_text_fmt(m_text, "%d", m_target_value + m_value);
+  }
   lv_obj_set_style_transform_rotation(m_text, -m_angle * 10.0, 0);
 
   // Transform buttons to be on a vertical line, relative to the current
-  // rotation. This can be done by adding 270° to the angle and using sin/cos to
-  // calculate x- and y-coordinates for a "down" vector. By adding 270°, when
-  // the angle is 0°, the vector will be pointing downwards. The confirm button
-  // is translated downwards, while the cancel button is translated upwards
-  // (note that downwards is not -y).
+  // rotation. This can be done by adding 270° to the angle and using sin/cos
+  // to calculate x- and y-coordinates for a "down" vector. By adding 270°,
+  // when the angle is 0°, the vector will be pointing downwards. The confirm
+  // button is translated downwards, while the cancel button is translated
+  // upwards (note that downwards is not -y).
 
   lv_obj_set_pos(m_confirm_button,
                  cos((270 + m_angle) * DEG_TO_RAD) * BUTTON_OFFSET,

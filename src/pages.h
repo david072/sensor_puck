@@ -82,10 +82,16 @@ private:
 
 class RotaryInputPage : public Page {
 public:
+  using UpdateLabelCallback = std::function<void(lv_obj_t*, int)>;
+
   explicit RotaryInputPage(int& value, float units_per_angle = 1.0 / 10.0);
 
   void set_max(int max) { m_max = max; }
   void set_min(int min) { m_min = min; }
+
+  void set_update_label_callback(UpdateLabelCallback const& update_label) {
+    m_update_label = update_label;
+  }
 
 protected:
   void update() override;
@@ -97,13 +103,15 @@ private:
   unsigned long m_last_update = 0;
   float m_angle = 0;
 
-  std::optional<int> m_max = 0;
-  std::optional<int> m_min = 0;
+  std::optional<int> m_max{};
+  std::optional<int> m_min{};
   /// Rate of change of m_value in units/°
   float m_units_per_angle = 1.0 / 10.0;
 
   int m_value = 0;
   int& m_target_value;
+
+  UpdateLabelCallback m_update_label;
 
   lv_obj_t* m_text;
   lv_obj_t* m_confirm_button;
