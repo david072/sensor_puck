@@ -40,7 +40,6 @@ void ClockPage::update() {
 
 ClockSettingsPage::ClockSettingsPage()
     : Page() {
-
   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
@@ -118,14 +117,106 @@ void ClockSettingsPage::update() {
   lv_label_set_text_fmt(m_second_label, "%02d", m_time.tm_sec);
 }
 
-TimerPage::TimerPage(lv_obj_t* parent)
-    : Page(parent) {
-  auto* text = large_text(page_container());
-  lv_label_set_text(text, "TimerPage");
-  lv_obj_align(text, LV_ALIGN_CENTER, 0, 0);
+void format_label_with_minutes_and_seconds(lv_obj_t* label, int ms) {
+  auto minutes = ms / (1000 * 60);
+  auto seconds = ms / 1000 - minutes * 60;
+  lv_label_set_text_fmt(label, "%02d:%02d", minutes, seconds);
 }
 
-void TimerPage::update() {}
+TimerPage::TimerPage(lv_obj_t* parent)
+    : Page(parent, UPDATE_INTERVAL_MS) {
+  lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  m_edit_button = text_button(
+      page_container(), LV_SYMBOL_EDIT,
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimerPage>(event);
+        auto* rp = new RotaryInputPage(p->m_duration_ms, 1000.0);
+        rp->set_min(0);
+        rp->set_update_label_callback(format_label_with_minutes_and_seconds);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+
+  spacer(page_container(), 0, 10);
+
+  m_time_label = large_text(page_container());
+  lv_obj_align(m_time_label, LV_ALIGN_CENTER, 0, 0);
+
+  spacer(page_container(), 0, 10);
+
+  auto* controls_container = flex_container(page_container());
+  lv_obj_set_flex_flow(controls_container, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+
+  m_play_pause_button = text_button(
+      controls_container, LV_SYMBOL_PLAY,
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimerPage>(event);
+        auto d = Data::the();
+        if (d->is_timer_running()) {
+          d->stop_timer();
+        } else {
+          d->start_timer(p->m_duration_ms);
+        }
+      },
+      this);
+
+  m_play_pause_button_label = lv_obj_get_child(m_play_pause_button, 0);
+
+  auto* reset_button = text_button(
+      controls_container, LV_SYMBOL_REFRESH,
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimerPage>(event);
+        Data::the()->stop_timer();
+        p->m_duration_ms = 0;
+      },
+      this);
+
+  m_time_blink_timer = lv_timer_create(
+      [](lv_timer_t* timer) {
+        auto obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
+        auto opa = lv_obj_get_style_opa(obj, 0);
+        if (opa == LV_OPA_0) {
+          lv_obj_set_style_opa(obj, LV_OPA_100, 0);
+        } else {
+          lv_obj_set_style_opa(obj, LV_OPA_0, 0);
+        }
+      },
+      BLINK_TIMER_PERIOD_MS, m_time_label);
+  lv_timer_pause(m_time_blink_timer);
+  lv_timer_set_auto_delete(m_time_blink_timer, false);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::UserTimerExpired,
+      [](void* handler_arg, esp_event_base_t, int32_t, void*) {
+        auto* p = static_cast<TimerPage*>(handler_arg);
+        p->m_duration_ms = 0;
+        lv_timer_reset(p->m_time_blink_timer);
+        lv_timer_set_repeat_count(p->m_time_blink_timer,
+                                  BLINK_TIMER_REPEAT_COUNT);
+        lv_timer_resume(p->m_time_blink_timer);
+      },
+      this);
+}
+
+void TimerPage::update() {
+  auto d = Data::the();
+  if (d->is_timer_running()) {
+    m_duration_ms = d->remaining_timer_duration_ms();
+    lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PAUSE);
+  } else {
+    lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PLAY);
+  }
+  lv_obj_set_state(m_edit_button, LV_STATE_DISABLED, d->is_timer_running());
+  lv_obj_set_state(m_play_pause_button, LV_STATE_DISABLED, m_duration_ms == 0);
+
+  format_label_with_minutes_and_seconds(m_time_label, m_duration_ms);
+}
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
     : Page(parent, UPDATE_INTERVAL_MS) {

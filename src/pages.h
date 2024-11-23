@@ -45,6 +45,22 @@ public:
 
 protected:
   void update() override;
+
+private:
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
+  /// Each repetition of the timer toggles the opacity of the time label.
+  /// Therefore, n repetitions will blink the label n/2 times.
+  static constexpr uint32_t BLINK_TIMER_REPEAT_COUNT = 8;
+  static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
+
+  int m_duration_ms = 0;
+
+  lv_obj_t* m_time_label;
+  lv_obj_t* m_edit_button;
+  lv_obj_t* m_play_pause_button;
+  lv_obj_t* m_play_pause_button_label;
+
+  lv_timer_t* m_time_blink_timer;
 };
 
 class AirQualityPage : public Page {

@@ -5,6 +5,7 @@
 #include <esp_event.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
+#include <freertos/timers.h>
 #include <memory>
 #include <optional>
 
@@ -103,6 +104,7 @@ class Data {
 public:
   enum Event : int32_t {
     TimeChanged,
+    UserTimerExpired,
   };
 
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
@@ -128,6 +130,12 @@ public:
 
   Lock::Guard lock_i2c() { return m_i2c_lock.lock(); }
 
+  void start_timer(int duration);
+  void stop_timer() const;
+  void resume_timer() const;
+  int remaining_timer_duration_ms() const;
+  bool is_timer_running() const;
+
   uint8_t battery_percentage() const { return m_battery_percentage; }
 
   /// °/s
@@ -137,6 +145,8 @@ public:
 
 private:
   Lock m_i2c_lock;
+
+  TimerHandle_t m_current_timer{};
 
   uint8_t m_battery_percentage;
 

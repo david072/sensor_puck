@@ -15,6 +15,59 @@ Mutex<Data>::Guard Data::the() {
   return data.lock();
 }
 
+void Data::start_timer(int duration) {
+  if (!m_current_timer) {
+    m_current_timer =
+        xTimerCreate("User Timer", 1, false, NULL, [](TimerHandle_t timer) {
+          xTimerDelete(timer, 10);
+          esp_event_post(DATA_EVENT_BASE, Event::UserTimerExpired, NULL, 0, 10);
+
+          // make sure to not block timer callback on Data mutex acquisition
+          xTaskCreate(
+              [](void*) {
+                Data::the()->m_current_timer = NULL;
+                vTaskDelete(NULL);
+              },
+              "tmr cleanup", 2048, NULL, 10, NULL);
+        });
+  }
+
+  xTimerStop(m_current_timer, portMAX_DELAY);
+  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(duration), portMAX_DELAY);
+}
+
+void Data::stop_timer() const {
+  if (!m_current_timer)
+    return;
+  auto remaining_time = remaining_timer_duration_ms();
+  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(remaining_time),
+                     portMAX_DELAY);
+  xTimerStop(m_current_timer, portMAX_DELAY);
+}
+
+void Data::resume_timer() const {
+  if (!m_current_timer)
+    return;
+  if (is_timer_running())
+    return;
+  xTimerStart(m_current_timer, portMAX_DELAY);
+}
+
+int Data::remaining_timer_duration_ms() const {
+  if (!m_current_timer)
+    return 0;
+
+  auto remaining_ticks =
+      xTimerGetExpiryTime(m_current_timer) - xTaskGetTickCount();
+  return pdTICKS_TO_MS(remaining_ticks);
+}
+
+bool Data::is_timer_running() const {
+  if (!m_current_timer)
+    return false;
+  return xTimerIsTimerActive(m_current_timer);
+}
+
 void Data::update_battery_percentage(uint32_t voltage) {
   // TODO: properly calculate percentage here
   m_battery_percentage =
