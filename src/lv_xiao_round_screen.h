@@ -5,6 +5,7 @@
 #include <Arduino_GFX_Library.h>
 #include <SPI.h>
 #include <Wire.h>
+#include <data.h>
 #include <esp_log.h>
 #include <lvgl.h>
 
@@ -80,6 +81,8 @@ void chsc6x_convert_xy(uint8_t* x, uint8_t* y) {
 }
 
 void chsc6x_get_xy(lv_coord_t* x, lv_coord_t* y) {
+  auto i2c_guard = Data::the()->lock_i2c();
+
   uint8_t temp[CHSC6X_READ_POINT_LEN] = {0};
   uint8_t read_len = Wire.requestFrom(CHSC6X_I2C_ID, CHSC6X_READ_POINT_LEN);
   if (read_len != CHSC6X_READ_POINT_LEN)

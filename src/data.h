@@ -111,28 +111,42 @@ public:
   /// [mV]
   static constexpr uint32_t MIN_BATTERY_VOLTAGE = 1800;
 
-  /// MEZ time zone
-  static constexpr timezone TIMEZONE = {
-      .tz_minuteswest = 1 * 60,
-      .tz_dsttime = DST_WET,
-  };
+  /// Temperature correction offset in °C
+  static constexpr float TEMPERATURE_OFFSET = -11;
+  /// Humidity correction offset in %
+  static constexpr float HUMIDITY_OFFSET = 12;
 
   static Mutex<Data>::Guard the();
 
   void update_battery_percentage(uint32_t voltage);
   void update_gyroscope(Vector3 v);
+  void update_environment_measurements(float temp, float humidity,
+                                       float pressure);
 
   tm get_time() const;
   void set_time(tm time) const;
+
+  Lock::Guard lock_i2c() { return m_i2c_lock.lock(); }
 
   uint8_t battery_percentage() const { return m_battery_percentage; }
 
   /// °/s
   Vector3 const& gyroscope() const { return m_gyroscope; }
 
+  float temperature() const { return m_temperature; }
+
 private:
+  Lock m_i2c_lock;
+
   uint8_t m_battery_percentage;
 
   /// °/s
   Vector3 m_gyroscope;
+
+  /// °C
+  float m_temperature;
+  /// %
+  float m_humidity;
+  /// hPa
+  float m_pressure;
 };

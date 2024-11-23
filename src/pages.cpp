@@ -128,7 +128,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
 void TimerPage::update() {}
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
-    : Page(parent) {
+    : Page(parent, UPDATE_INTERVAL_MS) {
   m_warning_circle = lv_obj_create(page_container());
   lv_obj_add_style(m_warning_circle, Ui::the().style().container(), 0);
   lv_obj_set_style_bg_color(m_warning_circle, Ui::Style::ERROR_COLOR, 0);
@@ -178,7 +178,9 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
   }
 }
 
-void AirQualityPage::update() {}
+void AirQualityPage::update() {
+  lv_label_set_text_fmt(m_temperature, "%.1f", Data::the()->temperature());
+}
 
 CompassPage::CompassPage(lv_obj_t* parent)
     : Page(parent) {

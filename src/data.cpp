@@ -1,6 +1,7 @@
 #include "data.h"
 #include <Arduino.h>
 #include <cstdio>
+#include <esp_log.h>
 
 ESP_EVENT_DEFINE_BASE(DATA_EVENT_BASE);
 
@@ -24,6 +25,13 @@ void Data::update_gyroscope(Vector3 v) {
   m_gyroscope = low_pass_filter(v * RAD_TO_DEG, m_gyroscope, 0.5);
 }
 
+void Data::update_environment_measurements(float temp, float humidity,
+                                           float pressure) {
+  m_temperature = temp + TEMPERATURE_OFFSET;
+  m_humidity = humidity + HUMIDITY_OFFSET;
+  m_pressure = pressure;
+}
+
 tm Data::get_time() const {
   auto now = time(NULL);
   tm time;
@@ -32,6 +40,10 @@ tm Data::get_time() const {
 }
 
 void Data::set_time(tm time) const {
+  ESP_LOGI("Data", "Setting system time to %02d:%02d:%02d, %02d.%02d.%04d",
+           time.tm_hour, time.tm_min, time.tm_sec, time.tm_mday, time.tm_mon,
+           time.tm_year);
+
   setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
   timeval tv = {
       .tv_sec = mktime(&time),

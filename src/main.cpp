@@ -16,7 +16,7 @@ constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 constexpr ulong BATTERY_READ_INTERVAL = 10000;
 constexpr int32_t BATTERY_SAMPLES = 20;
 
-constexpr ulong BME_READ_INTERVAL = 10000;
+constexpr ulong BME_READ_INTERVAL = 60 * 1000;
 
 std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
@@ -26,9 +26,10 @@ Adafruit_BME680 g_bme688;
 Adafruit_LSM6DSOX g_lsm6;
 
 ulong g_last_battery_read = 0;
-ulong g_last_bme_read = 0;
 ulong g_last_lsm_read = 0;
 ulong g_last_ui_update = 0;
+
+void bme_read_task(void*);
 
 void disable_scroll_on_fullscreen_enter(lv_obj_t* obj) {
   lv_obj_add_event_cb(
@@ -93,13 +94,11 @@ I2C_BM8563_TimeTypeDef get_rtc_time() {
 }
 
 void set_rtc_time(struct tm tm) {
-  printf("tm: %02d:%02d:%02d\n", tm.tm_hour, tm.tm_min, tm.tm_sec);
   I2C_BM8563_TimeTypeDef time = {
       .hours = static_cast<int8_t>(tm.tm_hour),
       .minutes = static_cast<int8_t>(tm.tm_min),
       .seconds = static_cast<int8_t>(tm.tm_sec),
   };
-  printf("time: %02d:%02d:%02d\n", time.hours, time.minutes, time.seconds);
   g_rtc.setTime(&time);
 }
 
@@ -113,10 +112,6 @@ void update_system_time_from_rtc() {
   auto rtc_time = get_rtc_time();
   auto rtc_date = get_rtc_date();
 
-  printf("rtc_time: %02d:%02d:%02d, %02d.%02d.%04d\n", rtc_time.hours,
-         rtc_time.minutes, rtc_time.seconds, rtc_date.date, rtc_date.month,
-         rtc_date.year);
-
   tm rt = {
       .tm_sec = rtc_time.seconds,
       .tm_min = rtc_time.minutes,
@@ -127,6 +122,7 @@ void update_system_time_from_rtc() {
       .tm_year = rtc_date.year - 1900,
   };
 
+  ESP_LOGI("System", "Updating system time from RTC");
   Data::the()->set_time(rt);
 }
 
@@ -143,10 +139,7 @@ void setup() {
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::TimeChanged,
       [](void* handler_arg, esp_event_base_t base, int32_t id,
-         void* event_data) {
-        printf("Setting RTC time\n");
-        set_rtc_time(Data::the()->get_time());
-      },
+         void* event_data) { set_rtc_time(Data::the()->get_time()); },
       NULL);
 
   lv_init();
@@ -159,6 +152,11 @@ void setup() {
   tm tm = Data::the()->get_time();
 
   g_bme688.begin(0x76);
+  g_bme688.setTemperatureOversampling(BME680_OS_8X);
+  g_bme688.setHumidityOversampling(BME680_OS_2X);
+  g_bme688.setPressureOversampling(BME680_OS_4X);
+  g_bme688.setIIRFilterSize(BME680_FILTER_SIZE_3);
+
   g_lsm6.begin_I2C();
 
   lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
@@ -178,6 +176,26 @@ void setup() {
   add_grouped_pages<ui::ClockPage, ui::TimerPage>();
   add_grouped_pages<ui::AirQualityPage>();
   add_grouped_pages<ui::CompassPage>();
+
+  xTaskCreate(bme_read_task, "BME Read", 2048, NULL, 1, NULL);
+}
+
+void bme_read_task(void*) {
+  while (true) {
+    {
+      auto data = Data::the();
+      auto i2c_guard = data->lock_i2c();
+
+      if (g_bme688.performReading()) {
+        data->update_environment_measurements(
+            g_bme688.temperature, g_bme688.humidity, g_bme688.pressure / 100.0);
+      } else {
+        ESP_LOGE("BME", "Failed reading BME\n");
+      }
+    }
+
+    vTaskDelay(BME_READ_INTERVAL / portTICK_RATE_MS);
+  }
 }
 
 void loop() {
@@ -193,24 +211,18 @@ void loop() {
     Data::the()->update_battery_percentage(milli_volts);
   }
 
-  // if (millis() - g_last_bme_read >= BME_READ_INTERVAL) {
-  //   g_last_bme_read = millis();
-
-  //   auto temp = g_bme688.readTemperature();
-  //   auto humidity = g_bme688.readHumidity();
-
-  //   printf("temp: %f °C, hum: %f\n", temp, humidity);
-  // }
-
   if (millis() - g_last_lsm_read >= 50) {
     g_last_lsm_read = millis();
+
+    auto data = Data::the();
+    auto i2c_guard = data->lock_i2c();
 
     sensors_event_t accel;
     sensors_event_t gyro;
     sensors_event_t temp;
     g_lsm6.getEvent(&accel, &gyro, &temp);
 
-    Data::the()->update_gyroscope(
+    data->update_gyroscope(
         Vector3(gyro.gyro.pitch, gyro.gyro.heading, gyro.gyro.roll));
   }
 
