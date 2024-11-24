@@ -312,7 +312,7 @@ void TimerPage::TimerOverlay::update() {
     // For some reason, doing this in the event handler for UserTimerExpired
     // halts the program completely, triggering the watchdog. Doing it here
     // (slightly awkward) makes it work...
-    if (m_timer_was_running) {
+    if (d->remaining_timer_duration_ms() == 0 && m_timer_was_running) {
       lv_arc_set_value(m_arc, 100);
       lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
     }
