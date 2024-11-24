@@ -41,19 +41,39 @@ private:
 
 class TimerPage : public Page {
 public:
+  class TimerOverlay : public Page {
+  public:
+    explicit TimerOverlay();
+
+  protected:
+    void update() override;
+
+  private:
+    static constexpr uint32_t UPDATE_INTERVAL_MS = 10;
+
+    int m_original_timer_duration = 0;
+    bool m_timer_was_running = false;
+
+    lv_obj_t* m_arc;
+    lv_timer_t* m_blink_timer;
+  };
+
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
+
   explicit TimerPage(lv_obj_t* parent);
 
 protected:
   void update() override;
 
 private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
   /// Each repetition of the timer toggles the opacity of the time label.
   /// Therefore, n repetitions will blink the label n/2 times.
   static constexpr uint32_t BLINK_TIMER_REPEAT_COUNT = 8;
   static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
 
   int m_duration_ms = 0;
+  int m_prev_duration_ms = 0;
+  bool m_duration_changed = false;
 
   lv_obj_t* m_time_label;
   lv_obj_t* m_edit_button;

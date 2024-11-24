@@ -134,12 +134,23 @@ TimerPage::TimerPage(lv_obj_t* parent)
       page_container(), LV_SYMBOL_EDIT,
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);
+        p->m_prev_duration_ms = p->m_duration_ms;
         auto* rp = new RotaryInputPage(p->m_duration_ms, 1000.0);
         rp->set_min(0);
         rp->set_update_label_callback(format_label_with_minutes_and_seconds);
         Ui::the().enter_fullscreen(p->page_container(), rp);
       },
       this);
+
+  lv_obj_add_event_cb(
+      page_container(),
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimerPage>(event);
+        if (p->m_prev_duration_ms != p->m_duration_ms) {
+          Data::the()->delete_timer();
+        }
+      },
+      Ui::the().pop_fullscreen_event(), this);
 
   spacer(page_container(), 0, 10);
 
@@ -161,7 +172,11 @@ TimerPage::TimerPage(lv_obj_t* parent)
         if (d->is_timer_running()) {
           d->stop_timer();
         } else {
-          d->start_timer(p->m_duration_ms);
+          if (p->m_duration_ms != p->m_prev_duration_ms) {
+            d->start_timer(p->m_duration_ms);
+          } else {
+            d->resume_timer();
+          }
         }
       },
       this);
@@ -172,7 +187,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
       controls_container, LV_SYMBOL_REFRESH,
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);
-        Data::the()->stop_timer();
+        Data::the()->delete_timer();
         p->m_duration_ms = 0;
       },
       this);
@@ -180,8 +195,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
   m_time_blink_timer = lv_timer_create(
       [](lv_timer_t* timer) {
         auto obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
-        auto opa = lv_obj_get_style_opa(obj, 0);
-        if (opa == LV_OPA_0) {
+        if (lv_obj_get_style_opa(obj, 0) == LV_OPA_0) {
           lv_obj_set_style_opa(obj, LV_OPA_100, 0);
         } else {
           lv_obj_set_style_opa(obj, LV_OPA_0, 0);
@@ -208,6 +222,7 @@ void TimerPage::update() {
   auto d = Data::the();
   if (d->is_timer_running()) {
     m_duration_ms = d->remaining_timer_duration_ms();
+    m_prev_duration_ms = m_duration_ms;
     lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PAUSE);
   } else {
     lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PLAY);
@@ -216,6 +231,76 @@ void TimerPage::update() {
   lv_obj_set_state(m_play_pause_button, LV_STATE_DISABLED, m_duration_ms == 0);
 
   format_label_with_minutes_and_seconds(m_time_label, m_duration_ms);
+}
+
+TimerPage::TimerOverlay::TimerOverlay()
+    : Page(NULL, UPDATE_INTERVAL_MS) {
+  make_overlay();
+
+  m_arc = lv_arc_create(page_container());
+  lv_arc_set_rotation(m_arc, 270);
+  lv_arc_set_bg_angles(m_arc, 0, 360);
+  lv_obj_remove_style(m_arc, NULL, LV_PART_KNOB);
+  lv_obj_remove_flag(m_arc, LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_set_style_arc_width(m_arc, 5, LV_PART_INDICATOR);
+  lv_obj_set_style_arc_width(m_arc, 5, LV_PART_MAIN);
+  lv_obj_set_style_arc_opa(m_arc, LV_OPA_50, LV_PART_MAIN);
+  lv_obj_set_style_arc_color(m_arc, make_color(0x64, 0x64, 0x64), LV_PART_MAIN);
+  lv_obj_set_size(m_arc, lv_pct(100), lv_pct(100));
+  lv_obj_center(m_arc);
+
+  lv_arc_set_value(m_arc, 0);
+  lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::UserTimerStarted,
+      [](void* handler_arg, esp_event_base_t, int32_t, void* event_data) {
+        auto* to = static_cast<TimerOverlay*>(handler_arg);
+        to->m_original_timer_duration = *static_cast<int*>(event_data);
+      },
+      this);
+
+  m_blink_timer = lv_timer_create(
+      [](lv_timer_t* timer) {
+        auto obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
+        if (lv_obj_has_flag(obj, LV_OBJ_FLAG_HIDDEN)) {
+          lv_obj_remove_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        } else {
+          lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
+        }
+      },
+      BLINK_TIMER_PERIOD_MS, m_arc);
+  lv_timer_pause(m_blink_timer);
+  lv_timer_set_auto_delete(m_blink_timer, false);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::UserTimerExpired,
+      [](void* handler_arg, esp_event_base_t, int32_t, void*) {
+        auto* p = static_cast<TimerOverlay*>(handler_arg);
+        lv_timer_reset(p->m_blink_timer);
+        lv_timer_set_repeat_count(p->m_blink_timer, BLINK_TIMER_REPEAT_COUNT);
+        lv_timer_resume(p->m_blink_timer);
+      },
+      this);
+}
+
+void TimerPage::TimerOverlay::update() {
+  auto d = Data::the();
+  if (d->is_timer_running() && m_original_timer_duration != 0) {
+    auto remaining = d->remaining_timer_duration_ms();
+    lv_arc_set_value(m_arc, 100 * remaining / m_original_timer_duration);
+    lv_obj_remove_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    // For some reason, doing this in the event handler for UserTimerExpired
+    // halts the program completely, triggering the watchdog. Doing it here
+    // (slightly awkward) makes it work...
+    if (m_timer_was_running) {
+      lv_arc_set_value(m_arc, 100);
+      lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+
+  m_timer_was_running = d->is_timer_running();
 }
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)

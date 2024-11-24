@@ -177,6 +177,8 @@ void setup() {
   add_grouped_pages<ui::AirQualityPage>();
   add_grouped_pages<ui::CompassPage>();
 
+  ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
+
   xTaskCreate(bme_read_task, "BME Read", 2048, NULL, 1, NULL);
 }
 

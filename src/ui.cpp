@@ -152,8 +152,7 @@ void Ui::exit_fullscreen() {
   auto page = m_fullscreen_pages.back();
   if (m_fullscreen_pages.size() == 1)
     lv_obj_send_event(page.source, m_exit_fullscreen_event, NULL);
-  else
-    lv_obj_send_event(page.source, m_pop_fullscreen_event, NULL);
+  lv_obj_send_event(page.source, m_pop_fullscreen_event, NULL);
 
   delete page.page;
   m_fullscreen_pages.pop_back();
@@ -248,6 +247,13 @@ Page::Page(lv_obj_t* parent, uint32_t update_period) {
 Page::~Page() {
   lv_obj_delete(m_container);
   lv_timer_delete(m_update_timer);
+}
+
+void Page::make_overlay() const {
+  lv_obj_remove_flag(m_container,
+                     static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                                LV_OBJ_FLAG_CLICK_FOCUSABLE));
+  lv_obj_set_style_bg_opa(m_container, LV_OPA_0, 0);
 }
 
 } // namespace ui

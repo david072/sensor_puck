@@ -104,6 +104,7 @@ class Data {
 public:
   enum Event : int32_t {
     TimeChanged,
+    UserTimerStarted,
     UserTimerExpired,
   };
 
@@ -133,8 +134,10 @@ public:
   void start_timer(int duration);
   void stop_timer() const;
   void resume_timer() const;
+  void delete_timer();
   int remaining_timer_duration_ms() const;
   bool is_timer_running() const;
+  bool timer_exists() const { return m_current_timer != NULL; }
 
   uint8_t battery_percentage() const { return m_battery_percentage; }
 

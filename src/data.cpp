@@ -34,6 +34,8 @@ void Data::start_timer(int duration) {
 
   xTimerStop(m_current_timer, portMAX_DELAY);
   xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(duration), portMAX_DELAY);
+  esp_event_post(DATA_EVENT_BASE, Event::UserTimerStarted, &duration,
+                 sizeof(duration), portMAX_DELAY);
 }
 
 void Data::stop_timer() const {
@@ -51,6 +53,13 @@ void Data::resume_timer() const {
   if (is_timer_running())
     return;
   xTimerStart(m_current_timer, portMAX_DELAY);
+}
+
+void Data::delete_timer() {
+  if (!m_current_timer)
+    return;
+  xTimerDelete(m_current_timer, portMAX_DELAY);
+  m_current_timer = NULL;
 }
 
 int Data::remaining_timer_duration_ms() const {

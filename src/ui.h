@@ -34,6 +34,8 @@ public:
 protected:
   virtual void update() {}
 
+  void make_overlay() const;
+
 private:
   lv_obj_t* m_container;
   lv_timer_t* m_update_timer;
@@ -91,6 +93,8 @@ public:
   void exit_fullscreen();
   bool in_fullscreen() { return !m_fullscreen_pages.empty(); }
 
+  void add_overlay(Page* overlay) { m_overlays.push_back(overlay); }
+
 private:
   Ui();
 
@@ -106,6 +110,8 @@ private:
   lv_event_code_t m_enter_fullscreen_event;
   lv_event_code_t m_exit_fullscreen_event;
   lv_event_code_t m_pop_fullscreen_event;
+
+  std::vector<Page*> m_overlays;
 };
 
 lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
