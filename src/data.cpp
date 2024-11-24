@@ -1,5 +1,4 @@
 #include "data.h"
-#include <Arduino.h>
 #include <cstdio>
 #include <esp_log.h>
 
@@ -83,8 +82,41 @@ void Data::update_battery_percentage(uint32_t voltage) {
       (voltage - 1800) / (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100;
 }
 
-void Data::update_gyroscope(Vector3 v) {
-  m_gyroscope = low_pass_filter(v * RAD_TO_DEG, m_gyroscope, 0.5);
+void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro) {
+  m_gyroscope = low_pass_filter(gyro * RAD_TO_DEG, m_gyroscope, 0.5);
+  m_acceleration =
+      low_pass_filter(accel - GRAVITATIONAL_ACCELERATION, m_acceleration, 0.8);
+
+  if (set_down_gesture_detected()) {
+    esp_event_post(DATA_EVENT_BASE, Event::SetDownGesture, NULL, 0, 10);
+  }
+}
+
+bool Data::set_down_gesture_detected() {
+  if (m_acceleration.y >= SDG_COOLDOWN_ACCELERATION_THRESHOLD &&
+      sdg_cooldown_exceeded()) {
+    m_sdg_cooldown = millis();
+  }
+
+  if (-m_acceleration.y >= SDG_DOWNWARDS_ACCELERATION_THRESHOLD &&
+      sdg_cooldown_exceeded()) {
+    if (millis() - m_set_down_gesture_start >
+        SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS) {
+      m_set_down_gesture_start = millis();
+    }
+  }
+
+  auto elapsed = millis() - m_set_down_gesture_start;
+
+  if (elapsed <= SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS) {
+    if (abs(m_acceleration.y) <= SDG_END_ACCELERATION) {
+      ESP_LOGI("Data", "Detected SDG after %ld ms", elapsed);
+      m_set_down_gesture_start = 0;
+      return true;
+    }
+  }
+
+  return false;
 }
 
 void Data::update_environment_measurements(float temp, float humidity,

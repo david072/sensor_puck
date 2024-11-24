@@ -2,6 +2,7 @@
 
 #include <cstdint>
 
+#include <Arduino.h>
 #include <esp_event.h>
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
@@ -106,6 +107,7 @@ public:
     TimeChanged,
     UserTimerStarted,
     UserTimerExpired,
+    SetDownGesture,
   };
 
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
@@ -119,10 +121,30 @@ public:
   /// Humidity correction offset in %
   static constexpr float HUMIDITY_OFFSET = 12;
 
+  /// Gravitational acceleration to correct the accelerometer's values
+  static constexpr Vector3 GRAVITATIONAL_ACCELERATION = Vector3(0, 9.71, 0);
+
+  /// SDG (set-down-gesture) values
+
+  /// Downwards acceleration to exceed for a SDG to be detected
+  static constexpr float SDG_DOWNWARDS_ACCELERATION_THRESHOLD = 2.5;
+  /// Value the absolute vertical acceleration has to be below to finish a SDG
+  static constexpr float SDG_END_ACCELERATION = 0.5;
+  /// Maximum time for vertical acceleration to return back to
+  /// SDG_END_ACCELERATION
+  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS = 300;
+  /// Minimum vertical acceleration for the cooldown to activate. This is to
+  /// prevent triggering a SDG while slowing the device down after lifting it
+  /// up.
+  static constexpr float SDG_COOLDOWN_ACCELERATION_THRESHOLD = 0.5;
+  /// Minimum time to wait after SDG_COOLDOWN_ACCELERATION_THRESHOLD has been
+  /// exceeded before allowing SDGs to be detected again
+  static constexpr ulong SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS = 200;
+
   static Mutex<Data>::Guard the();
 
   void update_battery_percentage(uint32_t voltage);
-  void update_gyroscope(Vector3 v);
+  void update_inertial_measurements(Vector3 accel, Vector3 gyro);
   void update_environment_measurements(float temp, float humidity,
                                        float pressure);
 
@@ -141,12 +163,18 @@ public:
 
   uint8_t battery_percentage() const { return m_battery_percentage; }
 
-  /// °/s
   Vector3 const& gyroscope() const { return m_gyroscope; }
+  Vector3 const& acceleration() const { return m_acceleration; }
 
   float temperature() const { return m_temperature; }
 
 private:
+  bool set_down_gesture_detected();
+  bool sdg_cooldown_exceeded() {
+    return millis() - m_sdg_cooldown >=
+           SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS;
+  }
+
   Lock m_i2c_lock;
 
   TimerHandle_t m_current_timer{};
@@ -155,6 +183,13 @@ private:
 
   /// °/s
   Vector3 m_gyroscope;
+  /// m/s^2
+  /// positive x-axis: from the LSM away from the ESP
+  /// positive y-axis: upwards, towards the display
+  /// positive z-axis: parallelt to the USB-port, pointing towards it
+  Vector3 m_acceleration;
+  float m_sdg_cooldown = 0;
+  ulong m_set_down_gesture_start = 0;
 
   /// °C
   float m_temperature;

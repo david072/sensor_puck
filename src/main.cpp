@@ -17,6 +17,7 @@ constexpr ulong BATTERY_READ_INTERVAL = 10000;
 constexpr int32_t BATTERY_SAMPLES = 20;
 
 constexpr ulong BME_READ_INTERVAL = 60 * 1000;
+constexpr ulong LSM_READ_INTERVAL = 50;
 
 std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
@@ -200,33 +201,44 @@ void bme_read_task(void*) {
   }
 }
 
+void handle_battery_voltage_read() {
+  if (millis() - g_last_battery_read < BATTERY_READ_INTERVAL)
+    return;
+
+  g_last_battery_read = millis();
+
+  int32_t milli_volts = 0;
+  for (int32_t i = 0; i < BATTERY_SAMPLES; ++i) {
+    milli_volts += analogReadMilliVolts(GPIO_NUM_9);
+  }
+
+  milli_volts /= BATTERY_SAMPLES;
+  Data::the()->update_battery_percentage(milli_volts);
+}
+
+void handle_lsm_read() {
+  if (millis() - g_last_lsm_read < LSM_READ_INTERVAL)
+    return;
+
+  g_last_lsm_read = millis();
+
+  auto data = Data::the();
+  auto i2c_guard = data->lock_i2c();
+
+  sensors_event_t accel;
+  sensors_event_t gyro;
+  sensors_event_t temp;
+  g_lsm6.getEvent(&accel, &gyro, &temp);
+
+  data->update_inertial_measurements(
+      Vector3(accel.acceleration.x, -accel.acceleration.z,
+              accel.acceleration.y),
+      Vector3(gyro.gyro.pitch, gyro.gyro.heading, gyro.gyro.roll));
+}
+
 void loop() {
-  if (millis() - g_last_battery_read >= BATTERY_READ_INTERVAL) {
-    g_last_battery_read = millis();
-
-    int32_t milli_volts = 0;
-    for (int32_t i = 0; i < BATTERY_SAMPLES; ++i) {
-      milli_volts += analogReadMilliVolts(GPIO_NUM_9);
-    }
-
-    milli_volts /= BATTERY_SAMPLES;
-    Data::the()->update_battery_percentage(milli_volts);
-  }
-
-  if (millis() - g_last_lsm_read >= 50) {
-    g_last_lsm_read = millis();
-
-    auto data = Data::the();
-    auto i2c_guard = data->lock_i2c();
-
-    sensors_event_t accel;
-    sensors_event_t gyro;
-    sensors_event_t temp;
-    g_lsm6.getEvent(&accel, &gyro, &temp);
-
-    data->update_gyroscope(
-        Vector3(gyro.gyro.pitch, gyro.gyro.heading, gyro.gyro.roll));
-  }
+  handle_battery_voltage_read();
+  handle_lsm_read();
 
   lv_tick_inc(millis() - g_last_ui_update);
   g_last_ui_update = millis();
