@@ -1,6 +1,7 @@
 //! Display and touch driver for the SeeedStudio XIAO Round Display
 //! Adapted from https://github.com/Seeed-Studio/Seeed_Arduino_RoundDisplay
 
+#include "constants.h"
 #include <Arduino.h>
 #include <Arduino_GFX_Library.h>
 #include <SPI.h>
@@ -13,17 +14,8 @@ constexpr lv_coord_t SCREEN_WIDTH = 240;
 constexpr lv_coord_t SCREEN_HEIGHT = 240;
 constexpr int LVGL_BUF_SIZE = 100; // Number of rows
 
-constexpr int CHSC6X_I2C_ID = 0x2e;
-constexpr int CHSC6X_READ_POINT_LEN = 5;
+constexpr size_t CHSC6X_READ_POINT_LEN = 5;
 constexpr long TOUCH_RELEASE_DEBOUNCE_MS = 50;
-constexpr uint8_t TOUCH_INT = GPIO_NUM_12;
-
-constexpr uint8_t DP_BL = GPIO_NUM_48;
-constexpr uint8_t DP_DC = GPIO_NUM_35;
-constexpr uint8_t DP_CS = GPIO_NUM_36;
-constexpr uint8_t DP_SCK = GPIO_NUM_13;
-constexpr uint8_t DP_MOSI = GPIO_NUM_17;
-constexpr uint8_t DP_MISO = GPIO_NUM_14;
 
 uint8_t screen_rotation = 0;
 
@@ -61,9 +53,9 @@ void lv_xiao_disp_init() {
 }
 
 bool chsc6x_is_pressed() {
-  if (digitalRead(TOUCH_INT) != LOW) {
+  if (digitalRead(DP_TOUCH_INT) != LOW) {
     delay(1);
-    if (digitalRead(TOUCH_INT) != LOW)
+    if (digitalRead(DP_TOUCH_INT) != LOW)
       return false;
   }
   return true;
@@ -138,7 +130,7 @@ void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
 }
 
 void lv_xiao_touch_init() {
-  pinMode(TOUCH_INT, INPUT_PULLUP);
+  pinMode(DP_TOUCH_INT, INPUT_PULLUP);
   lv_indev_t* indev = lv_indev_create();
   lv_indev_set_type(indev, LV_INDEV_TYPE_POINTER);
   lv_indev_set_read_cb(indev, chsc6x_read);

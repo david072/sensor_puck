@@ -1,3 +1,4 @@
+#include "constants.h"
 #include "data.h"
 #include "pages.h"
 #include "ui.h"
@@ -129,9 +130,9 @@ void update_system_time_from_rtc() {
 
 void setup() {
   Serial.begin(115200);
-  gpio_reset_pin(GPIO_NUM_8);
-  gpio_reset_pin(GPIO_NUM_7);
-  Wire.setPins(GPIO_NUM_8, GPIO_NUM_7);
+  gpio_reset_pin(B_SDA);
+  gpio_reset_pin(B_SCL);
+  Wire.setPins(B_SDA, B_SCL);
   Wire.begin();
   esp_log_level_set("*", ESP_LOG_DEBUG);
 
@@ -150,9 +151,7 @@ void setup() {
   g_rtc.begin();
   update_system_time_from_rtc();
 
-  tm tm = Data::the()->get_time();
-
-  g_bme688.begin(0x76);
+  g_bme688.begin(I2C_BME688_ADDR);
   g_bme688.setTemperatureOversampling(BME680_OS_8X);
   g_bme688.setHumidityOversampling(BME680_OS_2X);
   g_bme688.setPressureOversampling(BME680_OS_4X);
@@ -212,7 +211,7 @@ void handle_battery_voltage_read() {
 
   int32_t milli_volts = 0;
   for (int32_t i = 0; i < BATTERY_SAMPLES; ++i) {
-    milli_volts += analogReadMilliVolts(GPIO_NUM_9);
+    milli_volts += analogReadMilliVolts(BATTERY_READ_PIN);
   }
 
   milli_volts /= BATTERY_SAMPLES;
