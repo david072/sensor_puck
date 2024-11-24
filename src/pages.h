@@ -101,6 +101,20 @@ private:
   lv_obj_t* m_warning_circle;
 };
 
+class ExtendedEnvironmentInfoPage : public Page {
+public:
+  explicit ExtendedEnvironmentInfoPage(lv_obj_t* parent);
+
+protected:
+  void update() override;
+
+private:
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 30 * 1000;
+
+  lv_obj_t* m_humidity;
+  lv_obj_t* m_pressure;
+};
+
 class CompassPage : public Page {
 public:
   explicit CompassPage(lv_obj_t* parent);

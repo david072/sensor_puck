@@ -167,6 +167,8 @@ public:
   Vector3 const& acceleration() const { return m_acceleration; }
 
   float temperature() const { return m_temperature; }
+  float humidity() const { return m_humidity; }
+  float pressure() const { return m_pressure; }
 
 private:
   bool set_down_gesture_detected();

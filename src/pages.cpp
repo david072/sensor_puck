@@ -329,6 +329,8 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
   lv_obj_set_style_bg_opa(m_warning_circle, LV_OPA_100, 0);
   lv_obj_set_size(m_warning_circle, lv_pct(100), lv_pct(100));
 
+  lv_obj_add_flag(m_warning_circle, LV_OBJ_FLAG_HIDDEN);
+
   m_container = flex_container(page_container());
   lv_obj_set_style_radius(m_container, LV_RADIUS_CIRCLE, 0);
   lv_obj_set_flex_align(m_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
@@ -346,8 +348,8 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
                           LV_FLEX_ALIGN_START);
 
     m_co2_ppm = large_text(cont);
-    lv_label_set_text(m_co2_ppm, "10.000");
-    lv_obj_set_style_text_color(m_co2_ppm, Ui::Style::ERROR_COLOR, 0);
+    lv_label_set_text(m_co2_ppm, "----");
+    // lv_obj_set_style_text_color(m_co2_ppm, Ui::Style::ERROR_COLOR, 0);
 
     auto* co2_ppm_unit = caption1(cont);
     lv_label_set_text(co2_ppm_unit, "ppm, CO2");
@@ -374,6 +376,50 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
 
 void AirQualityPage::update() {
   lv_label_set_text_fmt(m_temperature, "%.1f", Data::the()->temperature());
+}
+
+ExtendedEnvironmentInfoPage::ExtendedEnvironmentInfoPage(lv_obj_t* parent)
+    : Page(parent, UPDATE_INTERVAL_MS) {
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_style_pad_row(page_container(), 10, 0);
+
+  // humidity
+  {
+    auto* cont = flex_container(page_container());
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_START);
+
+    m_humidity = large_text(cont);
+    lv_label_set_text(m_humidity, "0");
+
+    auto* humidity_unit = caption1(cont);
+    lv_label_set_text(humidity_unit, "%, Feuchtigkeit");
+    lv_obj_set_style_translate_y(humidity_unit, -10, 0);
+  }
+
+  divider(page_container());
+
+  // temperature
+  {
+    auto* cont = flex_container(page_container());
+    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
+                          LV_FLEX_ALIGN_START);
+
+    m_pressure = large_text(cont);
+    lv_label_set_text(m_pressure, "0");
+
+    auto* pressure_unit = caption1(cont);
+    lv_label_set_text(pressure_unit, "hPa");
+    lv_obj_set_style_translate_y(pressure_unit, -10, 0);
+  }
+}
+
+void ExtendedEnvironmentInfoPage::update() {
+  auto d = Data::the();
+  lv_label_set_text_fmt(m_humidity, "%.1f", d->humidity());
+  lv_label_set_text_fmt(m_pressure, "%.1f", d->pressure());
 }
 
 CompassPage::CompassPage(lv_obj_t* parent)

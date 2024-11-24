@@ -175,7 +175,7 @@ void setup() {
   enable_scroll_on_fullscreen_exit(g_ui_container, LV_DIR_VER);
 
   add_grouped_pages<ui::ClockPage, ui::TimerPage>();
-  add_grouped_pages<ui::AirQualityPage>();
+  add_grouped_pages<ui::AirQualityPage, ui::ExtendedEnvironmentInfoPage>();
   add_grouped_pages<ui::CompassPage>();
 
   ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
