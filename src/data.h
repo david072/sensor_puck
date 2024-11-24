@@ -50,48 +50,48 @@ private:
 using Lock = Mutex<std::nullopt_t>;
 
 struct Vector3 {
-  Vector3(float x, float y, float z)
+  constexpr Vector3(float x, float y, float z)
       : x(x),
         y(y),
         z(z) {}
 
-  Vector3(Vector3 const& other)
+  constexpr Vector3(Vector3 const& other)
       : Vector3(other.x, other.y, other.z) {}
 
-  Vector3(Vector3& other)
+  constexpr Vector3(Vector3& other)
       : Vector3(other.x, other.y, other.z) {}
 
-  Vector3(Vector3&& other)
+  constexpr Vector3(Vector3&& other)
       : Vector3(other.x, other.y, other.z) {}
 
-  Vector3(float v)
+  constexpr Vector3(float v)
       : Vector3(v, v, v) {}
 
-  Vector3()
+  constexpr Vector3()
       : Vector3(0) {}
 
-  Vector3 operator=(Vector3 const& other) {
+  constexpr Vector3 operator=(Vector3 const& other) {
     this->x = other.x;
     this->y = other.y;
     this->z = other.z;
     return *this;
   }
 
-  Vector3 operator+(Vector3 const& other) {
+  constexpr Vector3 operator+(Vector3 const& other) {
     return Vector3(x + other.x, y + other.y, z + other.z);
   }
-  Vector3 operator+=(Vector3 const& other) { return *this + other; }
+  constexpr Vector3 operator+=(Vector3 const& other) { return *this + other; }
 
-  Vector3 operator-(Vector3 const& other) {
+  constexpr Vector3 operator-(Vector3 const& other) {
     return Vector3(x - other.x, y - other.y, z - other.z);
   }
-  Vector3 operator-=(Vector3 const& other) { return *this - other; }
+  constexpr Vector3 operator-=(Vector3 const& other) { return *this - other; }
 
-  Vector3 operator*(float s) { return Vector3(x * s, y * s, z * s); }
-  Vector3 operator*=(float s) { return *this * s; }
+  constexpr Vector3 operator*(float s) { return Vector3(x * s, y * s, z * s); }
+  constexpr Vector3 operator*=(float s) { return *this * s; }
 
-  Vector3 operator/(float s) { return Vector3(x / s, y / s, z / s); }
-  Vector3 operator/=(float s) { return *this / s; }
+  constexpr Vector3 operator/(float s) { return Vector3(x / s, y / s, z / s); }
+  constexpr Vector3 operator/=(float s) { return *this / s; }
 
   float x;
   float y;
