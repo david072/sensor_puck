@@ -7,6 +7,22 @@ namespace ui {
 
 class ClockPage : public Page {
 public:
+  class ClockSettingsPage : public Page {
+  public:
+    explicit ClockSettingsPage();
+    ~ClockSettingsPage();
+
+  protected:
+    void update() override;
+
+  private:
+    tm m_time;
+
+    lv_obj_t* m_hour_label;
+    lv_obj_t* m_minute_label;
+    lv_obj_t* m_second_label;
+  };
+
   explicit ClockPage(lv_obj_t* parent);
 
 protected:
@@ -21,22 +37,6 @@ private:
   unsigned long m_press_start = 0;
   lv_point_t m_press_start_point;
   bool m_in_fullscreen = false;
-};
-
-class ClockSettingsPage : public Page {
-public:
-  explicit ClockSettingsPage();
-  ~ClockSettingsPage();
-
-protected:
-  void update() override;
-
-private:
-  tm m_time;
-
-  lv_obj_t* m_hour_label;
-  lv_obj_t* m_minute_label;
-  lv_obj_t* m_second_label;
 };
 
 class TimerPage : public Page {

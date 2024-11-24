@@ -38,7 +38,7 @@ void ClockPage::update() {
                         Data::the()->battery_percentage());
 }
 
-ClockSettingsPage::ClockSettingsPage()
+ClockPage::ClockSettingsPage::ClockSettingsPage()
     : Page() {
   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
@@ -111,7 +111,7 @@ ClockSettingsPage::ClockSettingsPage()
   update();
 }
 
-void ClockSettingsPage::update() {
+void ClockPage::ClockSettingsPage::update() {
   lv_label_set_text_fmt(m_hour_label, "%02d", m_time.tm_hour);
   lv_label_set_text_fmt(m_minute_label, "%02d", m_time.tm_min);
   lv_label_set_text_fmt(m_second_label, "%02d", m_time.tm_sec);
