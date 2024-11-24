@@ -235,6 +235,7 @@ Page::Page(lv_obj_t* parent, uint32_t update_period) {
       [](lv_timer_t* timer) {
         auto* thiss = static_cast<Page*>(lv_timer_get_user_data(timer));
         thiss->update();
+        thiss->m_visible = false;
       },
       update_period, this);
   if (update_period == 0) {
@@ -242,6 +243,14 @@ Page::Page(lv_obj_t* parent, uint32_t update_period) {
   }
 
   lv_timer_set_repeat_count(m_update_timer, -1);
+
+  lv_obj_add_event_cb(
+      m_container,
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<Page>(event);
+        p->m_visible = true;
+      },
+      LV_EVENT_DRAW_MAIN, this);
 }
 
 Page::~Page() {

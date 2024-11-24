@@ -71,6 +71,8 @@ private:
   static constexpr uint32_t BLINK_TIMER_REPEAT_COUNT = 8;
   static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
 
+  void toggle_timer();
+
   int m_duration_ms = 0;
   int m_prev_duration_ms = 0;
   bool m_duration_changed = false;

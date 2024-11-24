@@ -168,16 +168,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
       controls_container, LV_SYMBOL_PLAY,
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);
-        auto d = Data::the();
-        if (d->is_timer_running()) {
-          d->stop_timer();
-        } else {
-          if (p->m_duration_ms != p->m_prev_duration_ms) {
-            d->start_timer(p->m_duration_ms);
-          } else {
-            d->resume_timer();
-          }
-        }
+        p->toggle_timer();
       },
       this);
 
@@ -216,10 +207,37 @@ TimerPage::TimerPage(lv_obj_t* parent)
         lv_timer_resume(p->m_time_blink_timer);
       },
       this);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::SetDownGesture,
+      [](void* handler_arg, esp_event_base_t, int32_t, void*) {
+        auto* p = static_cast<TimerPage*>(handler_arg);
+        if (!p->is_visible())
+          return;
+        p->toggle_timer();
+      },
+      this);
+}
+
+void TimerPage::toggle_timer() {
+  if (m_duration_ms == 0)
+    return;
+
+  auto d = Data::the();
+  if (d->is_timer_running()) {
+    d->stop_timer();
+  } else {
+    if (m_duration_ms != m_prev_duration_ms) {
+      d->start_timer(m_duration_ms);
+    } else {
+      d->resume_timer();
+    }
+  }
 }
 
 void TimerPage::update() {
   auto d = Data::the();
+
   if (d->is_timer_running()) {
     m_duration_ms = d->remaining_timer_duration_ms();
     m_prev_duration_ms = m_duration_ms;

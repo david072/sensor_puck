@@ -36,9 +36,13 @@ protected:
 
   void make_overlay() const;
 
+  bool is_visible() const { return m_visible; }
+
 private:
   lv_obj_t* m_container;
   lv_timer_t* m_update_timer;
+
+  bool m_visible;
 };
 
 class Ui {
