@@ -40,6 +40,7 @@ void xiao_disp_init() {
 
   gfx->begin(SPI_FREQ);
   gfx->fillScreen(BLACK);
+  gfx->displayOn();
 }
 
 void lv_xiao_disp_init() {
@@ -50,6 +51,12 @@ void lv_xiao_disp_init() {
   lv_display_set_flush_cb(disp, xiao_disp_flush);
   lv_display_set_buffers(disp, (void*)draw_buf, NULL, sizeof(draw_buf),
                          LV_DISPLAY_RENDER_MODE_PARTIAL);
+}
+
+void lv_xiao_disp_deinit() {
+  gfx->displayOff();
+  gfx->fillRect(0, 0, SCREEN_WIDTH, SCREEN_HEIGHT, gfx->color565(0, 0, 0));
+  digitalWrite(DP_BL, LOW);
 }
 
 bool chsc6x_is_pressed() {

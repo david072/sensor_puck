@@ -5,6 +5,7 @@
 #include <Adafruit_BME680.h>
 #include <Adafruit_LSM6DSOX.h>
 #include <Arduino.h>
+#include <driver/rtc_io.h>
 
 #define USE_ARDUINO_GFX_LIBRARY
 #include "lv_xiao_round_screen.h"
@@ -13,6 +14,8 @@
 #include <lvgl.h>
 
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
+
+constexpr uint32_t DEEP_SLEEP_DISPLAY_INACTIVITY = 2 * 60 * 1000;
 
 constexpr ulong BATTERY_READ_INTERVAL = 10000;
 constexpr int32_t BATTERY_SAMPLES = 20;
@@ -238,9 +241,33 @@ void handle_lsm_read() {
       Vector3(gyro.gyro.pitch, gyro.gyro.heading, gyro.gyro.roll));
 }
 
+bool is_inactive() {
+  if (lv_display_get_inactive_time(NULL) < DEEP_SLEEP_DISPLAY_INACTIVITY)
+    return false;
+
+  if (ui::Ui::the().in_fullscreen()) {
+    lv_display_trigger_activity(NULL);
+    return false;
+  }
+
+  return true;
+}
+
+// TODO: Do proper cleanup? We do a lot of heap allocations that are never
+// freed, but then RAM is reset on wakeup, so does it matter?
+void enter_deep_sleep() {
+  lv_xiao_disp_deinit();
+  rtc_gpio_pullup_en(DP_TOUCH_INT);
+  esp_sleep_enable_ext0_wakeup(DP_TOUCH_INT, LOW);
+  esp_deep_sleep_start();
+}
+
 void loop() {
   handle_battery_voltage_read();
   handle_lsm_read();
+
+  if (is_inactive())
+    enter_deep_sleep();
 
   lv_tick_inc(millis() - g_last_ui_update);
   g_last_ui_update = millis();
