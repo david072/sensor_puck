@@ -202,6 +202,9 @@ void bme_read_task(void*) {
 }
 
 void handle_battery_voltage_read() {
+  // NOTE: Make sure to turn the "1" switch of the double switch component to
+  // the "ON" position. Otherwise, the A0 pin is floating.
+
   if (millis() - g_last_battery_read < BATTERY_READ_INTERVAL)
     return;
 

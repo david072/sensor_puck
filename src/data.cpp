@@ -77,9 +77,9 @@ bool Data::is_timer_running() const {
 }
 
 void Data::update_battery_percentage(uint32_t voltage) {
-  // TODO: properly calculate percentage here
   m_battery_percentage =
-      (voltage - 1800) / (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100;
+      round((voltage - MIN_BATTERY_VOLTAGE) /
+            (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro) {

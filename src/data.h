@@ -112,9 +112,9 @@ public:
 
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
   /// [mV]
-  static constexpr uint32_t MAX_BATTERY_VOLTAGE = 2150;
+  static constexpr float MAX_BATTERY_VOLTAGE = 2150.f;
   /// [mV]
-  static constexpr uint32_t MIN_BATTERY_VOLTAGE = 1800;
+  static constexpr float MIN_BATTERY_VOLTAGE = 1800.f;
 
   /// Temperature correction offset in °C
   static constexpr float TEMPERATURE_OFFSET = -11;
