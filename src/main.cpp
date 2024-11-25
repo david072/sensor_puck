@@ -15,13 +15,21 @@
 
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
-constexpr uint32_t DEEP_SLEEP_DISPLAY_INACTIVITY = 2 * 60 * 1000;
+constexpr uint32_t DEEP_SLEEP_DISPLAY_INACTIVITY = 60 * 1000;
 
 constexpr ulong BATTERY_READ_INTERVAL = 10000;
 constexpr int32_t BATTERY_SAMPLES = 20;
 
 constexpr ulong BME_READ_INTERVAL = 60 * 1000;
 constexpr ulong LSM_READ_INTERVAL = 50;
+
+struct DeepSleepTimer {
+  long sleep_start = 0;
+  int original_timer_duration = 0;
+  int remaining_timer_duration = 0;
+};
+
+RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 
 std::vector<ui::Page*> g_pages = {};
 lv_obj_t* g_ui_container;
@@ -131,6 +139,32 @@ void update_system_time_from_rtc() {
   Data::the()->set_time(rt);
 }
 
+void recover_from_wakeup() {
+  switch (esp_sleep_get_wakeup_cause()) {
+  case ESP_SLEEP_WAKEUP_EXT0: {
+    ESP_LOGI("Setup", "Woken up by EXT0");
+    if (deep_sleep_timer.sleep_start == 0)
+      break;
+
+    auto now = time(NULL) * 1000;
+    auto remaining_duration = deep_sleep_timer.remaining_timer_duration -
+                              (now - deep_sleep_timer.sleep_start);
+    Data::the()->recover_timer(deep_sleep_timer.original_timer_duration,
+                               remaining_duration);
+    break;
+  }
+  case ESP_SLEEP_WAKEUP_TIMER: {
+    ESP_LOGI("Setup", "Woken up by timer");
+    Data::the()->recover_timer(deep_sleep_timer.original_timer_duration, 0);
+    break;
+  }
+  default:
+    break;
+  }
+
+  deep_sleep_timer = DeepSleepTimer{};
+}
+
 void setup() {
   Serial.begin(115200);
   gpio_reset_pin(B_SDA);
@@ -181,6 +215,8 @@ void setup() {
   add_grouped_pages<ui::CompassPage>();
 
   ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
+
+  recover_from_wakeup();
 
   xTaskCreate(bme_read_task, "BME Read", 2048, NULL, 1, NULL);
 }
@@ -254,8 +290,20 @@ bool is_inactive() {
 }
 
 // TODO: Do proper cleanup? We do a lot of heap allocations that are never
-// freed, but then RAM is reset on wakeup, so does it matter?
+//  freed, but then RAM is reset on wakeup, so does it matter?
 void enter_deep_sleep() {
+  auto d = Data::the();
+  if (d->remaining_timer_duration_ms() > 0) {
+    deep_sleep_timer.sleep_start = time(NULL) * 1000;
+    deep_sleep_timer.original_timer_duration = d->original_timer_duration_ms();
+    deep_sleep_timer.remaining_timer_duration =
+        d->remaining_timer_duration_ms();
+    esp_sleep_enable_timer_wakeup(
+        static_cast<uint64_t>(d->remaining_timer_duration_ms()) * 1000);
+  } else {
+    deep_sleep_timer = DeepSleepTimer{};
+  }
+
   lv_xiao_disp_deinit();
   rtc_gpio_pullup_en(DP_TOUCH_INT);
   esp_sleep_enable_ext0_wakeup(DP_TOUCH_INT, LOW);

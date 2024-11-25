@@ -153,11 +153,13 @@ public:
 
   Lock::Guard lock_i2c() { return m_i2c_lock.lock(); }
 
+  void recover_timer(int original_duration, int remaining_duration);
   void start_timer(int duration);
   void stop_timer() const;
   void resume_timer() const;
   void delete_timer();
   int remaining_timer_duration_ms() const;
+  int original_timer_duration_ms() const { return m_original_timer_duration; }
   bool is_timer_running() const;
   bool timer_exists() const { return m_current_timer != NULL; }
 
@@ -180,6 +182,7 @@ private:
   Lock m_i2c_lock;
 
   TimerHandle_t m_current_timer{};
+  int m_original_timer_duration = 0;
 
   uint8_t m_battery_percentage;
 

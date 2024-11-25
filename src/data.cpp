@@ -14,6 +14,23 @@ Mutex<Data>::Guard Data::the() {
   return data.lock();
 }
 
+void Data::recover_timer(int original_duration, int remaining_duration) {
+  if (remaining_duration == 0) {
+    if (m_current_timer) {
+      xTimerDelete(m_current_timer, portMAX_DELAY);
+      m_current_timer = NULL;
+    }
+
+    esp_event_post(DATA_EVENT_BASE, Event::UserTimerExpired, NULL, 0,
+                   portMAX_DELAY);
+    return;
+  }
+
+  start_timer(original_duration);
+  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(remaining_duration),
+                     portMAX_DELAY);
+}
+
 void Data::start_timer(int duration) {
   if (!m_current_timer) {
     m_current_timer =
@@ -35,6 +52,8 @@ void Data::start_timer(int duration) {
   xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(duration), portMAX_DELAY);
   esp_event_post(DATA_EVENT_BASE, Event::UserTimerStarted, &duration,
                  sizeof(duration), portMAX_DELAY);
+
+  m_original_timer_duration = duration;
 }
 
 void Data::stop_timer() const {

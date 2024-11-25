@@ -267,7 +267,7 @@ TimerPage::TimerOverlay::TimerOverlay()
   lv_obj_set_size(m_arc, lv_pct(100), lv_pct(100));
   lv_obj_center(m_arc);
 
-  lv_arc_set_value(m_arc, 0);
+  lv_arc_set_value(m_arc, 100);
   lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
 
   esp_event_handler_register(
