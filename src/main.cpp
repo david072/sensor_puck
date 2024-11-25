@@ -212,7 +212,7 @@ void setup() {
 
   add_grouped_pages<ui::ClockPage, ui::TimerPage>();
   add_grouped_pages<ui::AirQualityPage, ui::ExtendedEnvironmentInfoPage>();
-  add_grouped_pages<ui::CompassPage>();
+  // add_grouped_pages<ui::CompassPage>();
 
   ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
 
