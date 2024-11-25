@@ -93,7 +93,7 @@ protected:
   void update() override;
 
 private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 30 * 1000;
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 2 * 1000;
 
   lv_obj_t* m_container;
   lv_obj_t* m_co2_ppm;
@@ -109,7 +109,7 @@ protected:
   void update() override;
 
 private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 30 * 1000;
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 2 * 1000;
 
   lv_obj_t* m_humidity;
   lv_obj_t* m_pressure;

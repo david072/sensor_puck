@@ -44,6 +44,12 @@ ulong g_last_ui_update = 0;
 
 void bme_read_task(void*);
 
+void lvgl_tick() {
+  lv_tick_inc(millis() - g_last_ui_update);
+  g_last_ui_update = millis();
+  lv_timer_handler();
+}
+
 void disable_scroll_on_fullscreen_enter(lv_obj_t* obj) {
   lv_obj_add_event_cb(
       obj,
@@ -188,12 +194,6 @@ void setup() {
   g_rtc.begin();
   update_system_time_from_rtc();
 
-  g_bme688.begin(I2C_BME688_ADDR);
-  g_bme688.setTemperatureOversampling(BME680_OS_8X);
-  g_bme688.setHumidityOversampling(BME680_OS_2X);
-  g_bme688.setPressureOversampling(BME680_OS_4X);
-  g_bme688.setIIRFilterSize(BME680_FILTER_SIZE_3);
-
   g_lsm6.begin_I2C();
 
   lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
@@ -217,11 +217,20 @@ void setup() {
   ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
 
   recover_from_wakeup();
+  lvgl_tick();
 
   xTaskCreate(bme_read_task, "BME Read", 2048, NULL, 1, NULL);
 }
 
 void bme_read_task(void*) {
+  g_bme688.begin(I2C_BME688_ADDR);
+  g_bme688.setTemperatureOversampling(BME680_OS_8X);
+  g_bme688.setHumidityOversampling(BME680_OS_2X);
+  g_bme688.setPressureOversampling(BME680_OS_4X);
+  g_bme688.setIIRFilterSize(BME680_FILTER_SIZE_3);
+
+  ESP_LOGI("BME", "BME setup done");
+
   while (true) {
     {
       auto data = Data::the();
@@ -240,10 +249,9 @@ void bme_read_task(void*) {
 }
 
 void handle_battery_voltage_read() {
-  // NOTE: Make sure to turn the "1" switch of the double switch component to
-  // the "ON" position. Otherwise, the A0 pin is floating.
-
-  if (millis() - g_last_battery_read < BATTERY_READ_INTERVAL)
+  // if we are called the first time, immediately make a measurement
+  if (g_last_battery_read > 0 &&
+      millis() - g_last_battery_read < BATTERY_READ_INTERVAL)
     return;
 
   g_last_battery_read = millis();
@@ -258,7 +266,8 @@ void handle_battery_voltage_read() {
 }
 
 void handle_lsm_read() {
-  if (millis() - g_last_lsm_read < LSM_READ_INTERVAL)
+  // if we are called the first time, make data available immediately
+  if (g_last_lsm_read > 0 && millis() - g_last_lsm_read < LSM_READ_INTERVAL)
     return;
 
   g_last_lsm_read = millis();
@@ -317,7 +326,5 @@ void loop() {
   if (is_inactive())
     enter_deep_sleep();
 
-  lv_tick_inc(millis() - g_last_ui_update);
-  g_last_ui_update = millis();
-  lv_timer_handler();
+  lvgl_tick();
 }
