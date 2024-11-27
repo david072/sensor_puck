@@ -99,6 +99,7 @@ void Data::update_battery_percentage(uint32_t voltage) {
   m_battery_percentage =
       round((voltage - MIN_BATTERY_VOLTAGE) /
             (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
+  m_battery_percentage = min(m_battery_percentage, (uint8_t)100);
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro) {

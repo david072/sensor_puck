@@ -7,7 +7,6 @@
 #include <Arduino.h>
 #include <driver/rtc_io.h>
 
-#define USE_ARDUINO_GFX_LIBRARY
 #include "lv_xiao_round_screen.h"
 
 #include <I2C_BM8563.h>

@@ -99,6 +99,15 @@ struct Vector3 {
   float z;
 };
 
+/// Apply voltage transformation of the voltage divider on the battery read
+/// pin (D0) of the SeeedStudio display.
+/// `v` is in volts.
+constexpr float battery_voltage_to_measured_voltage(float v) {
+  constexpr float R1 = 470000.f;
+  constexpr float R2 = 470000.f;
+  return (v * 1000.f / (R1 + R2)) * R2;
+}
+
 ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
 
 class Data {
@@ -111,10 +120,16 @@ public:
   };
 
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
+  /// 3.7V (nominal voltage of the battery), when converted by the voltage
+  /// converter on the display's PCB.
   /// [mV]
-  static constexpr float MAX_BATTERY_VOLTAGE = 2150.f;
+  static constexpr float MAX_BATTERY_VOLTAGE =
+      battery_voltage_to_measured_voltage(3.7);
+  /// 3.05V (ESP min is 3V), when converted by the voltage
+  /// converter on the display's PCB.
   /// [mV]
-  static constexpr float MIN_BATTERY_VOLTAGE = 1800.f;
+  static constexpr float MIN_BATTERY_VOLTAGE =
+      battery_voltage_to_measured_voltage(3.05);
 
   /// Temperature correction offset in °C
   static constexpr float TEMPERATURE_OFFSET = -11;
