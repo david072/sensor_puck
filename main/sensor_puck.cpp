@@ -1,4 +1,5 @@
 #include "display_driver.h"
+#include <bm8563.h>
 #include <data.h>
 #include <driver/adc.h>
 #include <driver/i2c_master.h>
@@ -10,7 +11,6 @@
 #include <esp_sleep.h>
 #include <lsm6dsox.h>
 #include <lvgl.h>
-#include <sensors/bm8563.h>
 #include <sensors/bme688.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
