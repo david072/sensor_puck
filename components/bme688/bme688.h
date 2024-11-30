@@ -1,9 +1,7 @@
 #pragma once
 
-#include "bme688/bme68x.h"
+#include "bme68x/bme68x.h"
 #include <driver/i2c_master.h>
-#include <driver/i2s_common.h>
-#include <driver/i2s_types.h>
 #include <optional>
 #include <types.h>
 
