@@ -8,10 +8,10 @@
 #include <esp_adc/adc_oneshot.h>
 #include <esp_log.h>
 #include <esp_sleep.h>
+#include <lsm6dsox.h>
 #include <lvgl.h>
 #include <sensors/bm8563.h>
 #include <sensors/bme688.h>
-#include <sensors/lsm6dsox.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
 #include <vector>

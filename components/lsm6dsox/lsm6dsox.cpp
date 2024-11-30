@@ -1,5 +1,5 @@
 #include "lsm6dsox.h"
-#include <constants.h>
+#include <util.h>
 
 Lsm6dsox::Lsm6dsox(i2c_master_bus_handle_t i2c_handle, u16 address) {
   i2c_device_config_t dev = {
