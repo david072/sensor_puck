@@ -135,7 +135,7 @@ private:
 
 class RotaryInputPage : public Page {
 public:
-  using UpdateLabelCallback = void (*)(lv_obj_t*, int);
+  using UpdateLabelCallback = std::function<void(lv_obj_t*, int)>;
 
   explicit RotaryInputPage(int& value, float units_per_angle = 1.0 / 10.0);
 
