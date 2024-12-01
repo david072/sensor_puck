@@ -65,6 +65,7 @@ void init_display() {
       .mode = GPIO_MODE_OUTPUT,
   };
   ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
+  set_display_backlight(true);
 
   ESP_LOGI("Display", "Initialize SPI bus");
   spi_bus_config_t buscfg = {
@@ -107,7 +108,7 @@ void init_display() {
   ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
   ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
 
-  set_backlight(true);
+  set_display_backlight(true);
 
   ESP_LOGI("Display", "Initialize LVGL library");
   lv_init();
@@ -150,7 +151,24 @@ void init_display() {
   ESP_LOGI("Display", "Display setup done!");
 }
 
-void set_backlight(bool enable) { gpio_set_level(DP_BL, enable ? 1 : 0); }
+void clear_display() {
+  auto panel = static_cast<esp_lcd_panel_handle_t>(
+      lv_display_get_user_data(lv_display_get_default()));
+
+  lv_color16_t* zeroes = static_cast<lv_color16_t*>(
+      calloc(DP_H_RES * LVGL_DRAW_BUF_LINES, sizeof(lv_color16_t)));
+
+  for (int y = 0; y <= DP_V_RES; y += LVGL_DRAW_BUF_LINES - 1) {
+    esp_lcd_panel_draw_bitmap(panel, 0, y, DP_H_RES + 1,
+                              y + LVGL_DRAW_BUF_LINES - 1, zeroes);
+  }
+
+  free(zeroes);
+}
+
+void set_display_backlight(bool enable) {
+  gpio_set_level(DP_BL, enable ? 1 : 0);
+}
 
 bool chsc6x_is_pressed() {
   if (gpio_get_level(DP_TOUCH_INT) != 0) {

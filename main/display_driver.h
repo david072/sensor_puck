@@ -12,4 +12,6 @@ constexpr u32 LVGL_TASK_STACK_SIZE = 8 * 1024;
 void init_display();
 void init_display_touch(i2c_master_bus_handle_t i2c_handle);
 
-void set_backlight(bool enable);
+void clear_display();
+
+void set_display_backlight(bool enable);

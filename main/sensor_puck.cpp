@@ -243,13 +243,15 @@ void display_inactivity_task(void* arg) {
         if (ui::Ui::the().in_fullscreen()) {
           lv_display_trigger_activity(NULL);
         } else {
-          // enter  deep-sleep
-          // TODO: Do proper cleanup? We do a lot of heap allocations that are
-          // never
-          //  freed, but then RAM is reset on wakeup, so does it matter?
-          lv_obj_clean(lv_scr_act());
-          lv_refr_now(NULL);
+          // enter deep-sleep
 
+          // TODO: Do proper cleanup? We do a lot of heap allocations that are
+          // never freed, but then RAM is reset on wakeup, so does it matter?
+
+          set_display_backlight(false);
+          clear_display();
+
+          // save timer state
           if (d->remaining_timer_duration_ms() > 0) {
             deep_sleep_timer.sleep_start = time(NULL) * 1000;
             deep_sleep_timer.original_timer_duration =
@@ -262,7 +264,6 @@ void display_inactivity_task(void* arg) {
             deep_sleep_timer = DeepSleepTimer{};
           }
 
-          set_backlight(false);
           rtc_gpio_pullup_en(DP_TOUCH_INT);
           esp_sleep_enable_ext0_wakeup(DP_TOUCH_INT, 0);
           esp_deep_sleep_start();
@@ -302,9 +303,6 @@ void recover_from_sleep() {
 
 extern "C" void app_main() {
   esp_event_loop_create_default();
-
-  // FIXME: The time between touching the display and the screen showing an
-  // image is too long. Why?
 
   ESP_LOGI("Setup", "Initialize I2C master bus");
   gpio_reset_pin(B_SDA);
