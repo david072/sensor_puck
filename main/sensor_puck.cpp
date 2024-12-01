@@ -364,6 +364,8 @@ extern "C" void app_main() {
     // add_grouped_pages<ui::CompassPage>();
 
     ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
+
+    lv_refr_now(NULL);
   }
 
   ESP_LOGI("Setup", "Starting sensor tasks");

@@ -174,7 +174,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
 
   m_play_pause_button_label = lv_obj_get_child(m_play_pause_button, 0);
 
-  auto* reset_button = text_button(
+  text_button(
       controls_container, LV_SYMBOL_REFRESH,
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);

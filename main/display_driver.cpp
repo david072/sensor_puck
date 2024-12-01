@@ -65,7 +65,6 @@ void init_display() {
       .mode = GPIO_MODE_OUTPUT,
   };
   ESP_ERROR_CHECK(gpio_config(&bk_gpio_config));
-  set_backlight(true);
 
   ESP_LOGI("Display", "Initialize SPI bus");
   spi_bus_config_t buscfg = {
