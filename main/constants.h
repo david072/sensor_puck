@@ -44,6 +44,6 @@ static constexpr size_t LVGL_DRAW_BUF_LINES = 100;
 
 static constexpr u32 DISPLAY_INACTIVITY_TASK_PRIORITY = 0;
 static constexpr u32 BME_TASK_PRIORITY = 1;
-static constexpr u32 LSM_TASK_PRIORITY = 1;
 static constexpr u32 BATTERY_TASK_PRIORITY = 1;
 static constexpr u32 LVGL_TASK_PRIORITY = 2;
+static constexpr u32 LSM_TASK_PRIORITY = LVGL_TASK_PRIORITY;
