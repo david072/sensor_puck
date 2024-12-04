@@ -12,6 +12,9 @@ Bm8563::Bm8563(i2c_master_bus_handle_t i2c_handle, u16 address) {
       .scl_speed_hz = 400000,
   };
   ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_handle, &dev, &m_device));
+
+  u8 data[2] = {0};
+  write(0x00, data, 2);
 }
 
 Bm8563::DateTime Bm8563::read_date_time() const {
@@ -21,6 +24,7 @@ Bm8563::DateTime Bm8563::read_date_time() const {
   return DateTime{
       .year = bcd_to_dec(buf[6]) + (buf[5] & CENTURY_MASK ? 1900 : 2000),
       .month = bcd_to_dec(buf[5] & MONTH_MASK),
+      .weekday = bcd_to_dec(buf[4] & WEEKDAY_MASK),
       .day = bcd_to_dec(buf[3] & DAY_MASK),
       .hour = bcd_to_dec(buf[2] & HOUR_MASK),
       .minute = bcd_to_dec(buf[1] & MINUTE_MASK),
@@ -33,7 +37,7 @@ void Bm8563::set_date_time(DateTime dt) const {
   read(SECONDS_REGISTER, values, sizeof(values));
 
   u8 buf[7] = {
-      dec_to_bcd((dt.second & SECOND_MASK) | values[0]),
+      dec_to_bcd((dt.second & SECOND_MASK) | (values[0] & ~SECOND_MASK)),
       dec_to_bcd(dt.minute),
       dec_to_bcd(dt.hour),
       dec_to_bcd(dt.day),
@@ -53,5 +57,6 @@ void Bm8563::write(u8 reg, u8 const* data, u32 length) const {
   u8 buf[64];
   buf[0] = reg;
   memcpy(buf + 1, data, length);
-  ESP_ERROR_CHECK(i2c_master_transmit(m_device, buf, length, I2C_TIMEOUT_MS));
+  ESP_ERROR_CHECK(
+      i2c_master_transmit(m_device, buf, length + 1, I2C_TIMEOUT_MS));
 }

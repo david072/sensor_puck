@@ -9,11 +9,19 @@ public:
   static constexpr u32 I2C_TIMEOUT_MS = 50;
 
   struct DateTime {
+    /// Range: 1900-2099
     int year;
+    /// Range: 1-12
     int month;
+    /// Range: 0-6
+    int weekday;
+    /// Range: 1-31
     int day;
+    /// Range: 0-23
     int hour;
+    /// Range: 0-59
     int minute;
+    /// Range: 0-59
     int second;
   };
 
@@ -26,6 +34,7 @@ private:
   static constexpr u8 SECONDS_REGISTER = 0x02;
   static constexpr u8 CENTURY_MASK = 0b10000000;
   static constexpr u8 MONTH_MASK = 0b00011111;
+  static constexpr u8 WEEKDAY_MASK = 0b00000111;
   static constexpr u8 DAY_MASK = 0b00111111;
   static constexpr u8 HOUR_MASK = 0b00111111;
   static constexpr u8 MINUTE_MASK = 0b01111111;
