@@ -185,7 +185,7 @@ private:
   static constexpr float MIN_ROTATION_THRESHOLD = 1.0;
   static constexpr int32_t BUTTON_OFFSET = 50;
 
-  unsigned long m_last_update = 0;
+  u32 m_last_update = 0;
   float m_angle = 0;
 
   std::optional<int> m_max{};

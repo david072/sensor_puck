@@ -202,7 +202,7 @@ void chsc6x_get_xy(u8* x, u8* y) {
 }
 
 void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
-  static ulong last_pressed = 0;
+  static u32 last_pressed = 0;
   static u8 last_touch_x = 0;
   static u8 last_touch_y = 0;
 

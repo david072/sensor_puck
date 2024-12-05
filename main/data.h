@@ -134,7 +134,7 @@ private:
   /// positive z-axis: parallelt to the USB-port, pointing towards it
   Vector3 m_acceleration;
   float m_sdg_cooldown = 0;
-  ulong m_set_down_gesture_start = 0;
+  u32 m_set_down_gesture_start = 0;
 
   /// °C
   float m_temperature = 0;
