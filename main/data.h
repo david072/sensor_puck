@@ -29,7 +29,11 @@ public:
     UserTimerStarted,
     UserTimerExpired,
     SetDownGesture,
+    BluetoothEnabled,
+    BluetoothDisabled,
   };
+
+  static constexpr u32 BLUETOOTH_ADVERSISEMENT_DURATION_MS = 1 * 60 * 1000;
 
   /// https://wiki.seeedstudio.com/seeedstudio_round_display_usage/#measure-battery-voltage-pins
   /// 3.7V (nominal voltage of the battery), when converted by the voltage
@@ -75,11 +79,17 @@ public:
   void update_environment_measurements(float temp, float humidity,
                                        float pressure);
 
-  tm get_time() const;
-  void set_time(tm time) const;
+  static tm get_time();
+  static tm get_utc_time();
+  static void set_time(tm time);
+  static void set_time(time_t unix_timestamp);
 
   Lock::Guard lock_i2c() { return m_i2c_lock.lock(); }
   Lock::Guard lock_lvgl() { return m_lvgl_lock.lock(); }
+
+  static void enable_bluetooth();
+  static void disable_bluetooth();
+  static bool bluetooth_enabled();
 
   void recover_timer(int original_duration, int remaining_duration);
   void start_timer(int duration);

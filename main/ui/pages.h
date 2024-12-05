@@ -2,10 +2,27 @@
 
 #include "ui.h"
 #include <ctime>
+#include <esp_event.h>
 #include <lvgl.h>
 #include <optional>
 
 namespace ui {
+
+class SettingsPage : public Page {
+public:
+  explicit SettingsPage();
+  ~SettingsPage();
+
+  static void on_bluetooth_enabled(void* handler_arg, esp_event_base_t, int32_t,
+                                   void*);
+  static void on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
+                                    int32_t, void*);
+
+protected:
+  void update() override;
+
+private:
+};
 
 class ClockPage : public Page {
 public:

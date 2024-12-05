@@ -3,10 +3,108 @@
 #include "layouts/flex/lv_flex.h"
 #include "ui.h"
 #include <cmath>
+#include <constants.h>
 #include <esp_log.h>
 #include <sys/param.h>
 
 namespace ui {
+
+SettingsPage::SettingsPage()
+    : Page() {
+  lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_scroll_dir(page_container(), LV_DIR_VER);
+
+  auto* back_button = lv_button_create(page_container());
+  auto* back_label = body_text(back_button);
+  lv_label_set_text(back_label, LV_SYMBOL_LEFT LV_SYMBOL_CLOSE);
+  lv_obj_add_event_cb(
+      back_button, [](lv_event_t*) { Ui::the().exit_fullscreen(); },
+      LV_EVENT_SHORT_CLICKED, NULL);
+
+  auto* clock_settings_button = lv_button_create(page_container());
+  auto* csb_label = body_text(clock_settings_button);
+  lv_label_set_text(csb_label, "Uhrzeit");
+  lv_obj_add_event_cb(
+      clock_settings_button,
+      [](lv_event_t* event) {
+        auto* thiss = get_event_user_data<SettingsPage>(event);
+        Ui::the().enter_fullscreen(thiss->page_container(),
+                                   new ClockPage::ClockSettingsPage());
+      },
+      LV_EVENT_SHORT_CLICKED, this);
+
+  spacer(page_container(), 0, 10);
+
+  auto* bluetooth_checkbox = lv_checkbox_create(page_container());
+  lv_checkbox_set_text(bluetooth_checkbox, "Bluetooth");
+  lv_obj_add_event_cb(
+      bluetooth_checkbox,
+      [](lv_event_t* event) {
+        auto* toggle = get_event_user_data<lv_obj_t>(event);
+        xTaskCreate(
+            [](void* arg) {
+              auto* toggle = static_cast<lv_obj_t*>(arg);
+              if (lv_obj_has_state(toggle, LV_STATE_CHECKED)) {
+                Data::enable_bluetooth();
+              } else {
+                Data::disable_bluetooth();
+              }
+              vTaskDelete(NULL);
+            },
+            "test", 5 * 1024, toggle, MISC_TASK_PRIORITY, NULL);
+        lv_obj_add_state(toggle, LV_STATE_DISABLED);
+      },
+      LV_EVENT_VALUE_CHANGED, bluetooth_checkbox);
+  if (Data::bluetooth_enabled())
+    lv_obj_add_state(bluetooth_checkbox, LV_STATE_CHECKED);
+
+  esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
+                             on_bluetooth_enabled, bluetooth_checkbox);
+  esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
+                             on_bluetooth_disabled, bluetooth_checkbox);
+}
+
+SettingsPage::~SettingsPage() {
+  esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
+                               on_bluetooth_enabled);
+  esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
+                               on_bluetooth_disabled);
+}
+
+void SettingsPage::on_bluetooth_enabled(void* handler_arg, esp_event_base_t,
+                                        int32_t, void*) {
+  xTaskCreate(
+      [](void* arg) {
+        {
+          auto* toggle = static_cast<lv_obj_t*>(arg);
+          auto guard = Data::the()->lock_lvgl();
+          lv_obj_add_state(toggle, LV_STATE_CHECKED);
+          lv_obj_remove_state(toggle, LV_STATE_DISABLED);
+        }
+        vTaskDelete(NULL);
+      },
+      "BLE CB EN", 5 * 1024, handler_arg, 1, NULL);
+}
+
+void SettingsPage::on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
+                                         int32_t, void*) {
+  xTaskCreate(
+      [](void* arg) {
+        {
+          auto* toggle = static_cast<lv_obj_t*>(arg);
+          auto guard = Data::the()->lock_lvgl();
+          lv_obj_remove_state(toggle, LV_STATE_CHECKED);
+          lv_obj_remove_state(toggle, LV_STATE_DISABLED);
+        }
+        vTaskDelete(NULL);
+      },
+      "BLE CB DIS", 5 * 1024, handler_arg, 1, NULL);
+}
+
+void SettingsPage::update() {}
 
 ClockPage::ClockPage(lv_obj_t* parent)
     : Page(parent, UPDATE_INTERVAL_MS) {
@@ -26,7 +124,7 @@ ClockPage::ClockPage(lv_obj_t* parent)
   std::function<void()> cb = [this]() {
     if (Ui::the().in_fullscreen())
       return;
-    Ui::the().enter_fullscreen(page_container(), new ClockSettingsPage());
+    Ui::the().enter_fullscreen(page_container(), new SettingsPage());
   };
   on_long_press(page_container(), cb);
 }

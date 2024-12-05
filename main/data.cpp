@@ -6,6 +6,8 @@
 #include <sys/param.h>
 #include <sys/time.h>
 
+#include <ble_peripheral_manager.h>
+
 ESP_EVENT_DEFINE_BASE(DATA_EVENT_BASE);
 
 template <typename T>
@@ -17,6 +19,12 @@ Mutex<Data>::Guard Data::the() {
   static Mutex<Data> data = Data();
   return data.lock();
 }
+
+void Data::enable_bluetooth() {
+  BlePeripheralManager::the().start(BLUETOOTH_ADVERSISEMENT_DURATION_MS);
+}
+void Data::disable_bluetooth() { BlePeripheralManager::the().stop(); }
+bool Data::bluetooth_enabled() { return BlePeripheralManager::the().started(); }
 
 void Data::recover_timer(int original_duration, int remaining_duration) {
   if (remaining_duration == 0) {
@@ -150,21 +158,31 @@ void Data::update_environment_measurements(float temp, float humidity,
   m_pressure = pressure;
 }
 
-tm Data::get_time() const {
+tm Data::get_time() {
   auto now = time(NULL);
   tm time;
   localtime_r(&now, &time);
   return time;
 }
 
-void Data::set_time(tm time) const {
+tm Data::get_utc_time() {
+  auto now = time(NULL);
+  return *gmtime(&now);
+}
+
+void Data::set_time(tm time) {
   ESP_LOGI("Data", "Setting system time to %02d:%02d:%02d, %02d.%02d.%04d",
            time.tm_hour, time.tm_min, time.tm_sec, time.tm_mday, time.tm_mon,
            time.tm_year);
+  set_time(mktime(&time));
+}
 
+void Data::set_time(time_t unix_timestamp) {
+  ESP_LOGI("Data", "Setting system time to Unix timestamp %lld",
+           unix_timestamp);
   setenv("TZ", "CET-1CEST,M3.5.0/2,M10.5.0/3", 1);
   timeval tv = {
-      .tv_sec = mktime(&time),
+      .tv_sec = unix_timestamp,
       .tv_usec = 0,
   };
   settimeofday(&tv, NULL);

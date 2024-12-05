@@ -42,6 +42,7 @@ static constexpr u16 DP_PARAM_BIT_WIDTH = 8;
 static constexpr u32 DP_PIXEL_CLOCK = 20 * 1000 * 1000; // 20 MHz
 static constexpr size_t LVGL_DRAW_BUF_LINES = 100;
 
+static constexpr u32 MISC_TASK_PRIORITY = 0;
 static constexpr u32 DISPLAY_INACTIVITY_TASK_PRIORITY = 0;
 static constexpr u32 BME_TASK_PRIORITY = 1;
 static constexpr u32 BATTERY_TASK_PRIORITY = 1;

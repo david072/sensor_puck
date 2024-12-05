@@ -16,6 +16,9 @@
 #include <ui/ui.h>
 #include <vector>
 
+// some include in this file fucks the compiler so hard omg
+#include <ble_peripheral_manager.h>
+
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
 constexpr u32 BATTERY_TASK_STACK_SIZE = 5 * 1024;
@@ -208,7 +211,9 @@ void update_system_time_from_rtc() {
       .tm_min = rtc.minute,
       .tm_hour = rtc.hour,
       .tm_mday = rtc.day,
-      .tm_mon = rtc.month,
+      // tm_mon is in the range 0-11, whereas the RTC clock's month is in the
+      // range 1-12
+      .tm_mon = rtc.month - 1,
       // tm_year should be relative to 1900
       .tm_year = rtc.year - 1900,
   };
@@ -217,20 +222,26 @@ void update_system_time_from_rtc() {
   data->set_time(rt);
 }
 
-void set_rtc_time(struct tm tm) {
+void set_rtc_time(struct tm utc_tm) {
   auto guard = Data::the()->lock_i2c();
   ESP_LOGI("BM8563", "Setting RTC time to %02d:%02d:%02d, %02d.%02d.%04d",
-           tm.tm_hour, tm.tm_min, tm.tm_sec, tm.tm_mday, tm.tm_mon, tm.tm_year);
+           utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec, utc_tm.tm_mday,
+           utc_tm.tm_mon, utc_tm.tm_year);
   Bm8563::DateTime dt = {
       // tm_year is relative to 1900
-      .year = tm.tm_year + 1900,
-      .month = tm.tm_mon,
-      .day = tm.tm_mday,
-      .hour = static_cast<int8_t>(tm.tm_hour),
-      .minute = static_cast<int8_t>(tm.tm_min),
-      .second = static_cast<int8_t>(tm.tm_sec),
+      .year = utc_tm.tm_year + 1900,
+      .month = utc_tm.tm_mon + 1,
+      .weekday = utc_tm.tm_wday,
+      .day = utc_tm.tm_mday,
+      .hour = static_cast<int8_t>(utc_tm.tm_hour),
+      .minute = static_cast<int8_t>(utc_tm.tm_min),
+      .second = static_cast<int8_t>(utc_tm.tm_sec),
   };
   g_rtc->set_date_time(dt);
+}
+
+bool can_sleep() {
+  return !ui::Ui::the().in_fullscreen() && !Data::bluetooth_enabled();
 }
 
 void display_inactivity_task(void* arg) {
@@ -240,9 +251,7 @@ void display_inactivity_task(void* arg) {
       auto guard = d->lock_lvgl();
       if (lv_display_get_inactive_time(NULL) >
           DEEP_SLEEP_DISPLAY_INACTIVITY_MS) {
-        if (ui::Ui::the().in_fullscreen()) {
-          lv_display_trigger_activity(NULL);
-        } else {
+        if (can_sleep()) {
           // enter deep-sleep
 
           // TODO: Do proper cleanup? We do a lot of heap allocations that are
@@ -268,6 +277,8 @@ void display_inactivity_task(void* arg) {
           esp_sleep_enable_ext0_wakeup(DP_TOUCH_INT, 0);
           esp_deep_sleep_start();
         }
+
+        lv_display_trigger_activity(NULL);
       }
     }
 
@@ -329,8 +340,10 @@ extern "C" void app_main() {
         // don't block in event handler
         xTaskCreate(
             [](void*) {
-              tm time = Data::the()->get_time();
-              set_rtc_time(time);
+              // NOTE: Make sure to store UTC time, as the time is expected to
+              // be in UTC when read back in
+              tm utc_time = Data::get_utc_time();
+              set_rtc_time(utc_time);
               vTaskDelete(NULL);
             },
             "TCE to RTC", 4 * 2048, NULL, 1, NULL);
