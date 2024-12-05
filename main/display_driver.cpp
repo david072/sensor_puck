@@ -152,18 +152,18 @@ void init_display() {
 }
 
 void clear_display() {
+  static constexpr size_t BUF_LINES = 10;
+
   auto panel = static_cast<esp_lcd_panel_handle_t>(
       lv_display_get_user_data(lv_display_get_default()));
 
   lv_color16_t* zeroes = static_cast<lv_color16_t*>(
-      calloc(DP_H_RES * LVGL_DRAW_BUF_LINES, sizeof(lv_color16_t)));
+      calloc(DP_H_RES * BUF_LINES, sizeof(lv_color16_t)));
 
-  for (int y = 0; y <= DP_V_RES; y += LVGL_DRAW_BUF_LINES - 1) {
-    esp_lcd_panel_draw_bitmap(panel, 0, y, DP_H_RES + 1,
-                              y + LVGL_DRAW_BUF_LINES - 1, zeroes);
+  for (int y = 0; y <= DP_V_RES; y += BUF_LINES - 1) {
+    esp_lcd_panel_draw_bitmap(panel, 0, y, DP_H_RES + 1, y + BUF_LINES - 1,
+                              zeroes);
   }
-
-  free(zeroes);
 }
 
 void set_display_backlight(bool enable) {
