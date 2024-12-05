@@ -108,11 +108,13 @@ class _DevicePageState extends State<DevicePage> {
     if (time == null) return;
     if (!mounted) return;
 
-    var newDateTime = DateTime(
-        dt.year, dt.month, dt.day, time.hour, time.minute, time.second);
-    deviceDateTimeOffset = DateTime.now().difference(newDateTime);
+    await setDeviceDateTime(DateTime(
+        dt.year, dt.month, dt.day, time.hour, time.minute, time.second));
+  }
 
+  Future<void> setDeviceDateTime(DateTime newDateTime) async {
     setState(() => loading = true);
+    deviceDateTimeOffset = DateTime.now().difference(newDateTime);
     await widget.device.setSystemTime(newDateTime);
     setState(() => loading = false);
   }
@@ -132,19 +134,30 @@ class _DevicePageState extends State<DevicePage> {
       ),
       body: !loading
           ? Padding(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(10),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  TextField(
-                    controller: dateTimeController,
-                    decoration: const InputDecoration(
-                      border: OutlineInputBorder(),
-                      alignLabelWithHint: true,
-                      labelText: "Uhrzeit",
-                    ),
-                    readOnly: true,
-                    onTap: () => pickDeviceDateTime(),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: TextField(
+                          controller: dateTimeController,
+                          decoration: const InputDecoration(
+                            border: OutlineInputBorder(),
+                            alignLabelWithHint: true,
+                            labelText: "Uhrzeit",
+                          ),
+                          readOnly: true,
+                          onTap: () => pickDeviceDateTime(),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      FilledButton(
+                        onPressed: () => setDeviceDateTime(DateTime.now()),
+                        child: const Text("Jetzt"),
+                      ),
+                    ],
                   ),
                 ],
               ),
