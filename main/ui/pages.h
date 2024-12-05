@@ -5,11 +5,26 @@
 #include <esp_event.h>
 #include <lvgl.h>
 #include <optional>
+#include <types.h>
 
 namespace ui {
 
 class SettingsPage : public Page {
 public:
+  class BluetoothOverlay : public Page {
+  public:
+    explicit BluetoothOverlay();
+
+  private:
+    static constexpr u32 BLINK_TIMER_PERIOD_MS = 500;
+
+    void update() override {}
+
+    lv_obj_t* m_container;
+    lv_obj_t* m_bluetooth_label;
+    lv_timer_t* m_blink_timer;
+  };
+
   explicit SettingsPage();
   ~SettingsPage();
 
@@ -19,7 +34,7 @@ public:
                                     int32_t, void*);
 
 protected:
-  void update() override;
+  void update() override {}
 
 private:
 };

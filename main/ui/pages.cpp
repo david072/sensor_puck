@@ -9,6 +9,17 @@
 
 namespace ui {
 
+/// Timer callback to toggle the opacity of the object in the timer's user data
+/// between 0 and 100
+void blink_timer_cb(lv_timer_t* timer) {
+  auto obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
+  if (lv_obj_get_style_opa(obj, 0) == LV_OPA_0) {
+    lv_obj_set_style_opa(obj, LV_OPA_100, 0);
+  } else {
+    lv_obj_set_style_opa(obj, LV_OPA_0, 0);
+  }
+}
+
 SettingsPage::SettingsPage()
     : Page() {
   lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
@@ -79,8 +90,8 @@ void SettingsPage::on_bluetooth_enabled(void* handler_arg, esp_event_base_t,
   xTaskCreate(
       [](void* arg) {
         {
-          auto* toggle = static_cast<lv_obj_t*>(arg);
           auto guard = Data::the()->lock_lvgl();
+          auto* toggle = static_cast<lv_obj_t*>(arg);
           lv_obj_add_state(toggle, LV_STATE_CHECKED);
           lv_obj_remove_state(toggle, LV_STATE_DISABLED);
         }
@@ -94,8 +105,8 @@ void SettingsPage::on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
   xTaskCreate(
       [](void* arg) {
         {
-          auto* toggle = static_cast<lv_obj_t*>(arg);
           auto guard = Data::the()->lock_lvgl();
+          auto* toggle = static_cast<lv_obj_t*>(arg);
           lv_obj_remove_state(toggle, LV_STATE_CHECKED);
           lv_obj_remove_state(toggle, LV_STATE_DISABLED);
         }
@@ -104,7 +115,84 @@ void SettingsPage::on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
       "BLE CB DIS", 5 * 1024, handler_arg, 1, NULL);
 }
 
-void SettingsPage::update() {}
+SettingsPage::BluetoothOverlay::BluetoothOverlay()
+    : Page() {
+  make_overlay();
+
+  m_container = flex_container(page_container());
+  lv_obj_set_flex_flow(m_container, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_align(m_container, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+  lv_obj_set_size(m_container, lv_pct(100), 40);
+  lv_obj_align(m_container, LV_ALIGN_BOTTOM_MID, 0, 0);
+  lv_obj_set_style_bg_color(m_container, make_color(28, 28, 28), 0);
+  lv_obj_set_style_bg_opa(m_container, LV_OPA_100, 0);
+  lv_obj_remove_flag(m_container,
+                     static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
+                                                LV_OBJ_FLAG_CLICK_FOCUSABLE));
+  lv_obj_add_flag(m_container, LV_OBJ_FLAG_HIDDEN);
+
+  m_bluetooth_label = body_text(m_container);
+  lv_label_set_text(m_bluetooth_label, LV_SYMBOL_BLUETOOTH);
+
+  m_blink_timer =
+      lv_timer_create(blink_timer_cb, BLINK_TIMER_PERIOD_MS, m_bluetooth_label);
+  lv_timer_pause(m_blink_timer);
+  lv_timer_set_auto_delete(m_blink_timer, false);
+  lv_timer_set_repeat_count(m_blink_timer, -1);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
+      [](void* handler_arg, esp_event_base_t, i32, void*) {
+        xTaskCreate(
+            [](void* arg) {
+              {
+                auto guard = Data::the()->lock_lvgl();
+                auto* thiss = static_cast<BluetoothOverlay*>(arg);
+                lv_obj_remove_flag(thiss->m_container, LV_OBJ_FLAG_HIDDEN);
+                lv_timer_resume(thiss->m_blink_timer);
+              }
+              vTaskDelete(NULL);
+            },
+            "BLO begin", 5 * 1024, handler_arg, MISC_TASK_PRIORITY, NULL);
+      },
+      this);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::BluetoothConnected,
+      [](void* handler_arg, esp_event_base_t, i32, void*) {
+        xTaskCreate(
+            [](void* arg) {
+              {
+                auto guard = Data::the()->lock_lvgl();
+                auto* thiss = static_cast<BluetoothOverlay*>(arg);
+                lv_timer_pause(thiss->m_blink_timer);
+                lv_obj_set_style_opa(thiss->m_bluetooth_label, LV_OPA_100, 0);
+              }
+              vTaskDelete(NULL);
+            },
+            "BLO conn", 5 * 1024, handler_arg, MISC_TASK_PRIORITY, NULL);
+      },
+      this);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
+      [](void* handler_arg, esp_event_base_t, i32, void*) {
+        xTaskCreate(
+            [](void* arg) {
+              {
+                auto guard = Data::the()->lock_lvgl();
+                auto* thiss = static_cast<BluetoothOverlay*>(arg);
+                lv_obj_add_flag(thiss->m_container, LV_OBJ_FLAG_HIDDEN);
+                lv_obj_set_style_opa(thiss->m_bluetooth_label, LV_OPA_100, 0);
+                lv_timer_pause(thiss->m_blink_timer);
+              }
+              vTaskDelete(NULL);
+            },
+            "BLO end", 5 * 1024, handler_arg, MISC_TASK_PRIORITY, NULL);
+      },
+      this);
+}
 
 ClockPage::ClockPage(lv_obj_t* parent)
     : Page(parent, UPDATE_INTERVAL_MS) {
@@ -281,16 +369,8 @@ TimerPage::TimerPage(lv_obj_t* parent)
       },
       this);
 
-  m_time_blink_timer = lv_timer_create(
-      [](lv_timer_t* timer) {
-        auto obj = static_cast<lv_obj_t*>(lv_timer_get_user_data(timer));
-        if (lv_obj_get_style_opa(obj, 0) == LV_OPA_0) {
-          lv_obj_set_style_opa(obj, LV_OPA_100, 0);
-        } else {
-          lv_obj_set_style_opa(obj, LV_OPA_0, 0);
-        }
-      },
-      BLINK_TIMER_PERIOD_MS, m_time_label);
+  m_time_blink_timer =
+      lv_timer_create(blink_timer_cb, BLINK_TIMER_PERIOD_MS, m_time_label);
   lv_timer_pause(m_time_blink_timer);
   lv_timer_set_auto_delete(m_time_blink_timer, false);
 

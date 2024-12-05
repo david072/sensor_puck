@@ -375,6 +375,7 @@ extern "C" void app_main() {
     // add_grouped_pages<ui::CompassPage>();
 
     ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
+    ui::Ui::the().add_overlay(new ui::SettingsPage::BluetoothOverlay());
 
     lv_refr_now(NULL);
   }
