@@ -49,33 +49,45 @@ SettingsPage::SettingsPage()
 
   spacer(page_container(), 0, 10);
 
-  auto* bluetooth_checkbox = lv_checkbox_create(page_container());
-  lv_checkbox_set_text(bluetooth_checkbox, "Bluetooth");
+  m_bluetooth_checkbox = lv_checkbox_create(page_container());
+  lv_checkbox_set_text(m_bluetooth_checkbox, "Bluetooth");
   lv_obj_add_event_cb(
-      bluetooth_checkbox,
+      m_bluetooth_checkbox,
       [](lv_event_t* event) {
-        auto* toggle = get_event_user_data<lv_obj_t>(event);
+        auto* p = get_event_user_data<SettingsPage>(event);
+        // debounce bluetooth toggle
+        if (millis() - p->m_last_bluetooth_toggle <
+            BLUETOOTH_CHECKBOX_DEBOUNCE_MS) {
+          return;
+        }
+
+        p->m_last_bluetooth_toggle = millis();
+
         xTaskCreate(
             [](void* arg) {
-              auto* toggle = static_cast<lv_obj_t*>(arg);
-              if (lv_obj_has_state(toggle, LV_STATE_CHECKED)) {
-                Data::enable_bluetooth();
-              } else {
-                Data::disable_bluetooth();
+              {
+                auto guard = Data::the()->lock_lvgl();
+                auto* toggle = static_cast<lv_obj_t*>(arg);
+                if (lv_obj_has_state(toggle, LV_STATE_CHECKED)) {
+                  Data::enable_bluetooth();
+                } else {
+                  Data::disable_bluetooth();
+                }
               }
               vTaskDelete(NULL);
             },
-            "test", 5 * 1024, toggle, MISC_TASK_PRIORITY, NULL);
-        lv_obj_add_state(toggle, LV_STATE_DISABLED);
+            "test", 5 * 1024, p->m_bluetooth_checkbox, MISC_TASK_PRIORITY,
+            NULL);
+        lv_obj_add_state(p->m_bluetooth_checkbox, LV_STATE_DISABLED);
       },
-      LV_EVENT_VALUE_CHANGED, bluetooth_checkbox);
+      LV_EVENT_VALUE_CHANGED, this);
   if (Data::bluetooth_enabled())
-    lv_obj_add_state(bluetooth_checkbox, LV_STATE_CHECKED);
+    lv_obj_add_state(m_bluetooth_checkbox, LV_STATE_CHECKED);
 
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
-                             on_bluetooth_enabled, bluetooth_checkbox);
+                             on_bluetooth_enabled, m_bluetooth_checkbox);
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
-                             on_bluetooth_disabled, bluetooth_checkbox);
+                             on_bluetooth_disabled, m_bluetooth_checkbox);
 }
 
 SettingsPage::~SettingsPage() {

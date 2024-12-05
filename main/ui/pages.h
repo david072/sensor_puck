@@ -37,6 +37,10 @@ protected:
   void update() override {}
 
 private:
+  static constexpr u32 BLUETOOTH_CHECKBOX_DEBOUNCE_MS = 200;
+
+  u32 m_last_bluetooth_toggle = 0;
+  lv_obj_t* m_bluetooth_checkbox;
 };
 
 class ClockPage : public Page {
