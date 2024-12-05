@@ -143,6 +143,7 @@ void BlePeripheralManager::stop() {
   nimble_port_stop();
   nimble_port_deinit();
 
+  m_connected = false;
   m_started = false;
   xSemaphoreGive(m_mutex);
 
@@ -222,6 +223,10 @@ int BlePeripheralManager::on_gap_event(ble_gap_event* event, void* arg) {
   case BLE_GAP_EVENT_CONNECT: {
     if (event->connect.status == 0) {
       ESP_LOGI("BLE", "Connection established!");
+      m_connected = true;
+
+      esp_event_post(DATA_EVENT_BASE, Data::Event::BluetoothConnected, NULL, 0,
+                     portMAX_DELAY);
       break;
     }
 
@@ -230,6 +235,7 @@ int BlePeripheralManager::on_gap_event(ble_gap_event* event, void* arg) {
   }
   case BLE_GAP_EVENT_DISCONNECT: {
     ESP_LOGI("BLE", "Device disconnected. Disabling Bluetooth");
+    m_connected = false;
     // Add grace period before disabling Bluetooth to allow NimBLE to fully
     // close the connection or something. If we call stop() here immediately, it
     // blocks on nimble_port_stop(), which I assume to be due to the connection
@@ -247,7 +253,7 @@ int BlePeripheralManager::on_gap_event(ble_gap_event* event, void* arg) {
   }
   case BLE_GAP_EVENT_ADV_COMPLETE: {
     ESP_LOGI("BLE", "Advertising complete. Disabling Bluetooth");
-    BlePeripheralManager::the().stop();
+    stop();
     break;
   }
   }

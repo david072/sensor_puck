@@ -59,6 +59,7 @@ public:
   void stop();
 
   bool started() const;
+  bool connected() const { return m_connected; }
 
 private:
   /// Amount of time to wait after the device disconnected before disabling BLE.
@@ -78,4 +79,6 @@ private:
   u32 m_advertisement_duration_ms = BLE_HS_FOREVER;
   bool m_started = false;
   SemaphoreHandle_t m_mutex;
+
+  bool m_connected = false;
 };
