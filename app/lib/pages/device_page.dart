@@ -44,6 +44,7 @@ class _DevicePageState extends State<DevicePage> {
 
   /// Offset, that when subtracted from the current DateTime, will result in the system time of the puck.
   Duration deviceDateTimeOffset = Duration.zero;
+  String? deviceCurrentSsid;
 
   bool loading = true;
 
@@ -80,6 +81,8 @@ class _DevicePageState extends State<DevicePage> {
 
   Future<void> setup() async {
     await updateDeviceDateTimeOffset();
+    deviceCurrentSsid = await widget.device.getWifiSsid();
+
     setState(() => loading = false);
   }
 
@@ -119,6 +122,21 @@ class _DevicePageState extends State<DevicePage> {
     setState(() => loading = false);
   }
 
+  Future<void> editWifiSettings() async {
+    var res = await showDialog<(String, String)>(
+      context: context,
+      builder: (_) => _WifiConfigurationDialog(ssid: deviceCurrentSsid),
+    );
+    if (res == null) return;
+    if (!mounted) return;
+
+    setState(() => loading = true);
+    deviceCurrentSsid = res.$1;
+    await widget.device.setWifiSsid(res.$1);
+    await widget.device.setWifiPassword(res.$2);
+    setState(() => loading = false);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -128,7 +146,7 @@ class _DevicePageState extends State<DevicePage> {
           IconButton(
             onPressed: () => Navigator.pushReplacement(context,
                 MaterialPageRoute(builder: (_) => const ConnectDevicePage())),
-            icon: const Icon(Icons.sensors_off),
+            icon: const Icon(Icons.sensors_off_outlined),
           ),
         ],
       ),
@@ -149,7 +167,7 @@ class _DevicePageState extends State<DevicePage> {
                             labelText: "Uhrzeit",
                           ),
                           readOnly: true,
-                          onTap: () => pickDeviceDateTime(),
+                          onTap: pickDeviceDateTime,
                         ),
                       ),
                       const SizedBox(width: 10),
@@ -158,6 +176,31 @@ class _DevicePageState extends State<DevicePage> {
                         child: const Text("Jetzt"),
                       ),
                     ],
+                  ),
+                  const SizedBox(height: 10),
+                  Card.outlined(
+                    margin: EdgeInsets.zero,
+                    child: Padding(
+                      padding: const EdgeInsets.all(15),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const SizedBox(width: double.infinity),
+                          Text(
+                            "WiFi",
+                            style: Theme.of(context).textTheme.headlineMedium,
+                          ),
+                          const SizedBox(height: 10),
+                          Text("SSID: ${deviceCurrentSsid ?? "---"}"),
+                          const SizedBox(height: 10),
+                          FilledButton.icon(
+                            onPressed: editWifiSettings,
+                            icon: const Icon(Icons.edit),
+                            label: const Text("Bearbeiten"),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -213,6 +256,101 @@ class __TimePickerWithSecondsDialogState
         TextButton(
           child: const Text("Ok"),
           onPressed: () => Navigator.pop(context, time),
+        ),
+      ],
+    );
+  }
+}
+
+class _WifiConfigurationDialog extends StatefulWidget {
+  const _WifiConfigurationDialog({this.ssid});
+
+  final String? ssid;
+
+  @override
+  State<_WifiConfigurationDialog> createState() =>
+      _WifiConfigurationDialogState();
+}
+
+class _WifiConfigurationDialogState extends State<_WifiConfigurationDialog> {
+  final ssidController = TextEditingController();
+  final formKey = GlobalKey<FormState>();
+
+  String ssid = "";
+  String password = "";
+  bool passwordObscured = true;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.ssid != null) {
+      ssid = widget.ssid!;
+      ssidController.text = widget.ssid!;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: const Text("WiFi"),
+      content: Form(
+        key: formKey,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            TextFormField(
+              decoration: const InputDecoration(
+                border: OutlineInputBorder(),
+                alignLabelWithHint: true,
+                labelText: "SSID",
+              ),
+              onChanged: (s) => ssid = s.trim(),
+              validator: (s) {
+                if (s == null || s.trim().isEmpty) return "SSID erforderlich";
+                return null;
+              },
+            ),
+            const SizedBox(height: 20),
+            TextFormField(
+              decoration: InputDecoration(
+                border: const OutlineInputBorder(),
+                alignLabelWithHint: true,
+                labelText: "Passwort",
+                suffixIcon: IconButton(
+                  onPressed: () =>
+                      setState(() => passwordObscured = !passwordObscured),
+                  icon: Icon(
+                    !passwordObscured
+                        ? Icons.visibility_outlined
+                        : Icons.visibility_off_outlined,
+                  ),
+                ),
+              ),
+              keyboardType: TextInputType.visiblePassword,
+              obscureText: passwordObscured,
+              onChanged: (s) => password = s.trim(),
+              validator: (s) {
+                if (s == null || s.trim().isEmpty) {
+                  return "Passwort erforderlich";
+                }
+                return null;
+              },
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context, null),
+          child: const Text("Abbrechen"),
+        ),
+        TextButton(
+          onPressed: () {
+            if (!(formKey.currentState?.validate() ?? false)) return;
+
+            Navigator.pop(context, (ssid, password));
+          },
+          child: const Text("Speichern"),
         ),
       ],
     );

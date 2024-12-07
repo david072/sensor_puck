@@ -7,9 +7,12 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 #include <freertos/timers.h>
+#include <nvs_flash.h>
 #include <sync.h>
 #include <types.h>
 #include <util.h>
+
+void initialize_nvs_flash();
 
 /// Apply voltage transformation of the voltage divider on the battery read
 /// pin (D0) of the SeeedStudio display.
@@ -32,6 +35,9 @@ public:
     BluetoothEnabled,
     BluetoothDisabled,
     BluetoothConnected,
+    WifiEnabled,
+    WifiConnected,
+    WifiDisabled,
   };
 
   static constexpr u32 BLUETOOTH_ADVERSISEMENT_DURATION_MS = 1 * 60 * 1000;
@@ -91,6 +97,10 @@ public:
   static void enable_bluetooth();
   static void disable_bluetooth();
   static bool bluetooth_enabled();
+
+  static void enable_wifi();
+  static void disable_wifi();
+  static bool wifi_enabled();
 
   void recover_timer(int original_duration, int remaining_duration);
   void start_timer(int duration);

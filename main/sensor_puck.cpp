@@ -282,7 +282,8 @@ void display_inactivity_task(void* arg) {
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(DISPLAY_INACTIVITY_TASK_INTERVAL_MS));
+    // vTaskDelay(pdMS_TO_TICKS(DISPLAY_INACTIVITY_TASK_INTERVAL_MS));
+    vTaskDelay(pdMS_TO_TICKS(5000));
   }
 }
 

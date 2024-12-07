@@ -7,6 +7,20 @@
 #include <sys/time.h>
 
 #include <ble_peripheral_manager.h>
+#include <wifi_manager.h>
+
+void initialize_nvs_flash() {
+  ESP_LOGI("Data", "Initializing NVS Flash");
+  auto ret = nvs_flash_init();
+  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
+      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
+    ESP_LOGW("Data", "NVS initialization failed, erasing and retrying...");
+    ESP_ERROR_CHECK(nvs_flash_erase());
+    ret = nvs_flash_init();
+  }
+  ESP_ERROR_CHECK(ret);
+  ESP_LOGI("Data", "NVS successfully initialized");
+}
 
 ESP_EVENT_DEFINE_BASE(DATA_EVENT_BASE);
 
@@ -25,6 +39,10 @@ void Data::enable_bluetooth() {
 }
 void Data::disable_bluetooth() { BlePeripheralManager::the().stop(); }
 bool Data::bluetooth_enabled() { return BlePeripheralManager::the().started(); }
+
+void Data::enable_wifi() { WifiManager::the().enable_wifi(); }
+void Data::disable_wifi() { WifiManager::the().disable_wifi(); }
+bool Data::wifi_enabled() { return WifiManager::the().wifi_enabled(); }
 
 void Data::recover_timer(int original_duration, int remaining_duration) {
   if (remaining_duration == 0) {

@@ -28,10 +28,10 @@ public:
   explicit SettingsPage();
   ~SettingsPage();
 
-  static void on_bluetooth_enabled(void* handler_arg, esp_event_base_t, int32_t,
+  static void async_check_checkbox(void* handler_arg, esp_event_base_t, int32_t,
                                    void*);
-  static void on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
-                                    int32_t, void*);
+  static void async_uncheck_checkbox(void* handler_arg, esp_event_base_t,
+                                     int32_t, void*);
 
 protected:
   void update() override {}
@@ -41,6 +41,7 @@ private:
 
   u32 m_last_bluetooth_toggle = 0;
   lv_obj_t* m_bluetooth_checkbox;
+  lv_obj_t* m_wifi_checkbox;
 };
 
 class ClockPage : public Page {

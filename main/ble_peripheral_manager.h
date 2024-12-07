@@ -10,6 +10,8 @@ int access_cb(u16 conn_handle, u16 attr_handle, ble_gatt_access_ctxt* ctx,
               void* arg);
 
 static u16 date_time_attr_handle;
+static u16 wifi_ssid_attr_handle;
+static u16 wifi_password_attr_handle;
 
 /// UUIDs generated using https://www.uuidgenerator.net/
 
@@ -20,6 +22,14 @@ ble_uuid128_t const SYSTEM_SVC_UUID =
 ble_uuid128_t const DATE_TIME_CHR_UUID =
     BLE_UUID128_INIT(0x9e, 0x2f, 0x59, 0x94, 0x61, 0x20, 0x40, 0x8f, 0xae, 0x37,
                      0x2d, 0xb9, 0x33, 0xbd, 0xa1, 0x11);
+
+ble_uuid128_t const WIFI_SSID_CHR_UUID =
+    BLE_UUID128_INIT(0xd1, 0x84, 0xff, 0x5a, 0x02, 0x8a, 0x4e, 0x36, 0xbd, 0xcf,
+                     0xf3, 0xcb, 0xc3, 0xd0, 0x1a, 0x02);
+
+ble_uuid128_t const WIFI_PASSWORD_CHR_UUID =
+    BLE_UUID128_INIT(0xef, 0xcc, 0xf4, 0x57, 0x9f, 0xb6, 0x4e, 0x05, 0xa9, 0x94,
+                     0x59, 0xd0, 0xb6, 0xfa, 0x6e, 0x3f);
 
 ble_gatt_svc_def const GATT_SERVER_SERVICES[] = {
     {
@@ -34,6 +44,23 @@ ble_gatt_svc_def const GATT_SERVER_SERVICES[] = {
                     .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE |
                              BLE_GATT_CHR_F_WRITE_NO_RSP,
                     .val_handle = &date_time_attr_handle,
+                },
+                // WiFi SSID
+                {
+                    .uuid = &WIFI_SSID_CHR_UUID.u,
+                    .access_cb = access_cb,
+                    .flags = BLE_GATT_CHR_F_READ | BLE_GATT_CHR_F_WRITE |
+                             BLE_GATT_CHR_F_WRITE_NO_RSP,
+                    .val_handle = &wifi_ssid_attr_handle,
+                },
+                // WiFi password
+                {
+                    .uuid = &WIFI_PASSWORD_CHR_UUID.u,
+                    .access_cb = access_cb,
+                    .flags = BLE_GATT_CHR_F_WRITE |
+                             BLE_GATT_CHR_F_WRITE_NO_RSP |
+                             BLE_GATT_CHR_F_WRITE_ENC,
+                    .val_handle = &wifi_password_attr_handle,
                 },
                 // no more characteristics
                 {0},

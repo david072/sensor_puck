@@ -5,9 +5,9 @@
 #include <nimble/ble.h>
 #include <nimble/nimble_port.h>
 #include <nimble/nimble_port_freertos.h>
-#include <nvs_flash.h>
 #include <os/endian.h>
 #include <services/gap/ble_svc_gap.h>
+#include <wifi_manager.h>
 
 #include <data.h>
 #include <esp_event.h>
@@ -20,6 +20,9 @@ char const* addr_str(u8* addr) {
   return buf;
 }
 
+// TODO: Properly handle host endianness here. Since ESP ist LE and BLE
+// communication is also LE, this works at the moment, but would break on
+// a BE system.
 int access_cb(u16 conn_handle, u16 attr_handle, ble_gatt_access_ctxt* ctx,
               void* arg) {
 #define ASSERT_OR_RETURN(x, err)                                               \
@@ -34,20 +37,31 @@ int access_cb(u16 conn_handle, u16 attr_handle, ble_gatt_access_ctxt* ctx,
   switch (ctx->op) {
   case BLE_GATT_ACCESS_OP_WRITE_CHR: {
     if (attr_handle == date_time_attr_handle) {
-      ESP_LOGI("BLE", "Characteristic write");
       u16 len = os_mbuf_len(ctx->om);
       if (len > sizeof(time_t)) {
         return BLE_ATT_ERR_VALUE_NOT_ALLOWED;
       }
 
-      // TODO: Properly handle host endianness here. Since ESP ist LE and BLE
-      // communication is also LE, this works at the moment, but would break on
-      // a BE system.
       time_t time = 0;
 
       ASSERT_OR_RETURN(os_mbuf_copydata(ctx->om, 0, len, &time) == 0,
                        BLE_ATT_ERR_UNLIKELY);
       Data::set_time(time);
+      return 0;
+    } else if (attr_handle == wifi_ssid_attr_handle) {
+      u16 len = os_mbuf_len(ctx->om);
+      std::string s(len, '-');
+      ASSERT_OR_RETURN(os_mbuf_copydata(ctx->om, 0, len, s.data()) == 0,
+                       BLE_ATT_ERR_UNLIKELY);
+      WifiManager::the().set_ssid(s);
+      return 0;
+    } else if (attr_handle == wifi_password_attr_handle) {
+      u16 len = os_mbuf_len(ctx->om);
+      std::string s(len, '-');
+      ASSERT_OR_RETURN(os_mbuf_copydata(ctx->om, 0, len, s.data()) == 0,
+                       BLE_ATT_ERR_UNLIKELY);
+      ESP_LOGI("ble", "setting wifi password to %s", s.c_str());
+      WifiManager::the().set_password(s);
       return 0;
     }
 
@@ -58,6 +72,14 @@ int access_cb(u16 conn_handle, u16 attr_handle, ble_gatt_access_ctxt* ctx,
       // return little-endian
       auto unix_ts = htole64(time(NULL));
       ASSERT_OR_RETURN(os_mbuf_append(ctx->om, &unix_ts, sizeof(unix_ts)) == 0,
+                       BLE_ATT_ERR_UNLIKELY);
+      return 0;
+    } else if (attr_handle == wifi_ssid_attr_handle) {
+      auto ssid = WifiManager::the().ssid();
+      if (!ssid)
+        return 0;
+      ASSERT_OR_RETURN(os_mbuf_append(ctx->om, ssid->data(), ssid->length()) ==
+                           0,
                        BLE_ATT_ERR_UNLIKELY);
       return 0;
     }
@@ -96,13 +118,7 @@ void BlePeripheralManager::start(u32 advertisement_duration_ms) {
   m_started = true;
   m_advertisement_duration_ms = advertisement_duration_ms;
 
-  auto ret = nvs_flash_init();
-  if (ret == ESP_ERR_NVS_NO_FREE_PAGES ||
-      ret == ESP_ERR_NVS_NEW_VERSION_FOUND) {
-    ESP_ERROR_CHECK(nvs_flash_erase());
-    ret = nvs_flash_init();
-  }
-  ESP_ERROR_CHECK(ret);
+  initialize_nvs_flash();
 
   ESP_ERROR_CHECK(nimble_port_init());
 

@@ -66,9 +66,7 @@ SettingsPage::SettingsPage()
         xTaskCreate(
             [](void* arg) {
               {
-                auto guard = Data::the()->lock_lvgl();
-                auto* toggle = static_cast<lv_obj_t*>(arg);
-                if (lv_obj_has_state(toggle, LV_STATE_CHECKED)) {
+                if (!Data::bluetooth_enabled()) {
                   Data::enable_bluetooth();
                 } else {
                   Data::disable_bluetooth();
@@ -76,8 +74,7 @@ SettingsPage::SettingsPage()
               }
               vTaskDelete(NULL);
             },
-            "test", 5 * 1024, p->m_bluetooth_checkbox, MISC_TASK_PRIORITY,
-            NULL);
+            "test", 5 * 1024, NULL, MISC_TASK_PRIORITY, NULL);
         lv_obj_add_state(p->m_bluetooth_checkbox, LV_STATE_DISABLED);
       },
       LV_EVENT_VALUE_CHANGED, this);
@@ -85,35 +82,70 @@ SettingsPage::SettingsPage()
     lv_obj_add_state(m_bluetooth_checkbox, LV_STATE_CHECKED);
 
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
-                             on_bluetooth_enabled, m_bluetooth_checkbox);
+                             async_check_checkbox, m_bluetooth_checkbox);
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
-                             on_bluetooth_disabled, m_bluetooth_checkbox);
+                             async_uncheck_checkbox, m_bluetooth_checkbox);
+
+  spacer(page_container(), 0, 10);
+
+  m_wifi_checkbox = lv_checkbox_create(page_container());
+  lv_checkbox_set_text(m_wifi_checkbox, "WiFi");
+  lv_obj_add_event_cb(
+      m_wifi_checkbox,
+      [](lv_event_t* event) {
+        auto* cb = get_event_user_data<lv_obj_t>(event);
+        xTaskCreate(
+            [](void* arg) {
+              {
+                if (!Data::wifi_enabled()) {
+                  Data::enable_wifi();
+                } else {
+                  Data::disable_wifi();
+                }
+              }
+              vTaskDelete(NULL);
+            },
+            "wifi cb", 5 * 1024, NULL, MISC_TASK_PRIORITY, NULL);
+        lv_obj_add_state(cb, LV_STATE_DISABLED);
+      },
+      LV_EVENT_VALUE_CHANGED, m_wifi_checkbox);
+  if (Data::bluetooth_enabled())
+    lv_obj_add_state(m_wifi_checkbox, LV_STATE_CHECKED);
+
+  esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiEnabled,
+                             async_check_checkbox, m_wifi_checkbox);
+  esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiDisabled,
+                             async_uncheck_checkbox, m_wifi_checkbox);
 }
 
 SettingsPage::~SettingsPage() {
   esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
-                               on_bluetooth_enabled);
+                               async_check_checkbox);
   esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
-                               on_bluetooth_disabled);
+                               async_uncheck_checkbox);
+  esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::WifiEnabled,
+                               async_check_checkbox);
+  esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::WifiDisabled,
+                               async_uncheck_checkbox);
 }
 
-void SettingsPage::on_bluetooth_enabled(void* handler_arg, esp_event_base_t,
+void SettingsPage::async_check_checkbox(void* handler_arg, esp_event_base_t,
                                         int32_t, void*) {
   xTaskCreate(
       [](void* arg) {
         {
           auto guard = Data::the()->lock_lvgl();
-          auto* toggle = static_cast<lv_obj_t*>(arg);
-          lv_obj_add_state(toggle, LV_STATE_CHECKED);
-          lv_obj_remove_state(toggle, LV_STATE_DISABLED);
+          auto* cb = static_cast<lv_obj_t*>(arg);
+          lv_obj_add_state(cb, LV_STATE_CHECKED);
+          lv_obj_remove_state(cb, LV_STATE_DISABLED);
         }
         vTaskDelete(NULL);
       },
       "BLE CB EN", 5 * 1024, handler_arg, 1, NULL);
 }
 
-void SettingsPage::on_bluetooth_disabled(void* handler_arg, esp_event_base_t,
-                                         int32_t, void*) {
+void SettingsPage::async_uncheck_checkbox(void* handler_arg, esp_event_base_t,
+                                          int32_t, void*) {
   xTaskCreate(
       [](void* arg) {
         {

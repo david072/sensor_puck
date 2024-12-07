@@ -46,6 +46,7 @@ class _ConnectDevicePageState extends State<ConnectDevicePage> {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text("Verbindung fehlgeschlagen: $e")));
+      setState(() => loading = false);
     }
   }
 
