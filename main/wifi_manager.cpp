@@ -8,15 +8,12 @@
 WifiManager::WifiManager() {
   initialize_nvs_flash();
   m_mutex = xSemaphoreCreateMutex();
-
-  auto handle = open_nvs();
-  handle->set_string(NVS_SSID_KEY, "FRITZ!Box 7430 QZ");
-  handle->set_string(NVS_PASSWORD_KEY, "59575230740718200408");
-  handle->commit();
 }
 
 bool WifiManager::enable_wifi() {
   xSemaphoreTake(m_mutex, portMAX_DELAY);
+
+  ESP_LOGI("WiFi", "Enabling wifi...");
 
   auto ssid = this->ssid();
   auto pw = this->password();
@@ -75,8 +72,6 @@ bool WifiManager::enable_wifi() {
               .failure_retry_cnt = 10,
           },
   };
-  printf("ssid: %s, pw: %s\n", ssid->c_str(), pw->c_str());
-  fflush(stdout);
   memset(&wifi_config.sta.ssid, 0, sizeof(wifi_config.sta.ssid));
   memset(&wifi_config.sta.password, 0, sizeof(wifi_config.sta.password));
   memcpy(&wifi_config.sta.ssid, ssid->c_str(), ssid->length());
@@ -95,6 +90,7 @@ bool WifiManager::enable_wifi() {
 }
 
 void WifiManager::disable_wifi() {
+  ESP_LOGI("WiFi", "Disabling wifi...");
   if (auto rc = esp_wifi_disconnect(); rc == ESP_FAIL)
     ESP_ERROR_CHECK(rc);
   esp_wifi_stop();

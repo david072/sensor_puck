@@ -155,6 +155,7 @@ void BlePeripheralManager::stop() {
     return;
   }
 
+  ble_gatts_stop();
   ble_gap_adv_stop();
   nimble_port_stop();
   nimble_port_deinit();
