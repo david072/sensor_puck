@@ -5310,6 +5310,12 @@
 		(uuid "34a88064-2832-4d29-85c2-573dcd72fe63")
 	)
 	(junction
+		(at 21.59 91.44)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "3607a890-6d75-4201-8c88-14993c51b1a9")
+	)
+	(junction
 		(at 87.63 91.44)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -5548,10 +5554,6 @@
 		(uuid "b22730e5-633c-44bd-9717-668aa3bc6ed7")
 	)
 	(no_connect
-		(at 55.88 91.44)
-		(uuid "b83d961b-1ac4-48b1-8130-8d5db41f2642")
-	)
-	(no_connect
 		(at 86.36 60.96)
 		(uuid "bd8b3f02-9c78-4656-88d9-b3bc081e0f1a")
 	)
@@ -5606,6 +5608,16 @@
 			(type default)
 		)
 		(uuid "06c34ab6-a347-491d-bc94-702fcac932db")
+	)
+	(wire
+		(pts
+			(xy 21.59 91.44) (xy 55.88 91.44)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "077629f2-21c1-47d8-9272-900b5bdf5ffb")
 	)
 	(wire
 		(pts
@@ -6772,7 +6784,7 @@
 		(uuid 5580c408-ee82-4d26-9fe5-bd7c33f0d3d9)
 	)
 	(rectangle
-		(start 25.4 82.55)
+		(start 30.48 82.55)
 		(end 57.15 87.63)
 		(stroke
 			(width 0)
@@ -6887,6 +6899,16 @@
 		)
 		(uuid "4a33387d-0178-400a-afb7-276bbd8b207c")
 	)
+	(text "Needs to\nbe <100k"
+		(exclude_from_sim no)
+		(at 81.026 97.028 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+		(uuid "5906232b-635e-4693-b506-567b074dc8bb")
+	)
 	(text "4"
 		(exclude_from_sim no)
 		(at 169.164 41.148 0)
@@ -6957,9 +6979,9 @@
 		)
 		(uuid "848a5893-1040-476b-b097-c773c0053d2c")
 	)
-	(text "don't use?! (external clock)"
+	(text "don't use?! (ext. clock)"
 		(exclude_from_sim no)
-		(at 40.386 85.344 0)
+		(at 43.18 85.344 0)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -7066,6 +7088,17 @@
 			)
 		)
 		(uuid "c4c6ad4d-5940-41ad-933c-b8edb561aae8")
+	)
+	(text "Self-powered devices\nneed to monitor VBUS"
+		(exclude_from_sim no)
+		(at 41.402 94.488 0)
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+			(href "https://docs.espressif.com/projects/esp-idf/en/latest/esp32s3/api-reference/peripherals/usb_device.html#self-powered-device")
+		)
+		(uuid "c551ca42-58ac-4ca3-b39c-f72d2d88ac51")
 	)
 	(text "9"
 		(exclude_from_sim no)
@@ -9474,6 +9507,138 @@
 			(project ""
 				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
 					(reference "TP1")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:GND")
+		(at 21.59 99.06 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "25b9b2c5-1f6c-471d-8a5d-b6276ddbf1bf")
+		(property "Reference" "#PWR060"
+			(at 21.59 105.41 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "GND"
+			(at 21.59 104.14 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 21.59 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 21.59 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"GND\" , ground"
+			(at 21.59 99.06 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "2ea00b79-d46c-4959-98bc-aa0b8b209b87")
+		)
+		(instances
+			(project ""
+				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
+					(reference "#PWR060")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "power:VBUS")
+		(at 21.59 83.82 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "262525cc-24f1-4364-977e-830f83d044a1")
+		(property "Reference" "#PWR059"
+			(at 21.59 87.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Value" "VBUS"
+			(at 21.59 78.74 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 21.59 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" ""
+			(at 21.59 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Power symbol creates a global label with name \"VBUS\""
+			(at 21.59 83.82 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "1"
+			(uuid "9fc945ed-1c15-4df7-bfb7-e0f35ad3c27c")
+		)
+		(instances
+			(project ""
+				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
+					(reference "#PWR059")
 					(unit 1)
 				)
 			)
@@ -12541,6 +12706,75 @@
 		)
 	)
 	(symbol
+		(lib_id "Device:R")
+		(at 21.59 95.25 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "93937995-66da-4457-be39-66da3bbcf6d5")
+		(property "Reference" "R15"
+			(at 24.13 93.9799 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TBD"
+			(at 24.13 96.5199 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 19.812 95.25 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 21.59 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 21.59 95.25 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "e72fa126-ab01-4a7f-8976-66a4b2d6998c")
+		)
+		(pin "1"
+			(uuid "872cb7e1-9390-4e14-824e-2bfb85cb8d35")
+		)
+		(instances
+			(project "sensor_puck"
+				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
+					(reference "R15")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
 		(lib_id "power:GND")
 		(at 252.73 20.32 90)
 		(unit 1)
@@ -13453,6 +13687,75 @@
 			(project ""
 				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
 					(reference "#PWR035")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Device:R")
+		(at 21.59 87.63 0)
+		(unit 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(dnp no)
+		(uuid "a7fde6e2-f524-434c-af00-c7a035b94b17")
+		(property "Reference" "R11"
+			(at 24.13 86.3599 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "TBD"
+			(at 24.13 88.8999 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" ""
+			(at 19.812 87.63 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 21.59 87.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 21.59 87.63 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(pin "2"
+			(uuid "ec6a976c-5b55-4937-ad93-6883ecf2d36d")
+		)
+		(pin "1"
+			(uuid "81146f1e-5aa8-4bb3-bfab-4f4b25875f49")
+		)
+		(instances
+			(project ""
+				(path "/c1602782-7caa-4b85-bd73-331d213bf770"
+					(reference "R11")
 					(unit 1)
 				)
 			)
