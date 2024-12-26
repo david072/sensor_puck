@@ -103,6 +103,9 @@ private:
   void gatt_server_init();
   void begin_advertising();
 
+  void lock() const { xSemaphoreTakeRecursive(m_mutex, portMAX_DELAY); }
+  void unlock() const { xSemaphoreGiveRecursive(m_mutex); }
+
   u32 m_advertisement_duration_ms = BLE_HS_FOREVER;
   bool m_started = false;
   SemaphoreHandle_t m_mutex;

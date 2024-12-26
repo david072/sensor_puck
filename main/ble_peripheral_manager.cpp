@@ -109,10 +109,10 @@ BlePeripheralManager::BlePeripheralManager() {
 }
 
 void BlePeripheralManager::start(u32 advertisement_duration_ms) {
-  xSemaphoreTake(m_mutex, portMAX_DELAY);
+  lock();
 
   if (m_started) {
-    xSemaphoreGive(m_mutex);
+    unlock();
     return;
   }
   m_started = true;
@@ -139,7 +139,7 @@ void BlePeripheralManager::start(u32 advertisement_duration_ms) {
 
   nimble_port_freertos_init(ble_peripheral_host_task);
 
-  xSemaphoreGive(m_mutex);
+  lock();
 
   esp_event_post(DATA_EVENT_BASE, Data::Event::BluetoothEnabled, NULL, 0,
                  portMAX_DELAY);
@@ -149,9 +149,9 @@ void BlePeripheralManager::start(u32 advertisement_duration_ms) {
 }
 
 void BlePeripheralManager::stop() {
-  xSemaphoreTake(m_mutex, portMAX_DELAY);
+  lock();
   if (!m_started) {
-    xSemaphoreGive(m_mutex);
+    unlock();
     return;
   }
 
@@ -162,7 +162,7 @@ void BlePeripheralManager::stop() {
 
   m_connected = false;
   m_started = false;
-  xSemaphoreGive(m_mutex);
+  unlock();
 
   esp_event_post(DATA_EVENT_BASE, Data::Event::BluetoothDisabled, NULL, 0,
                  portMAX_DELAY);
@@ -171,9 +171,9 @@ void BlePeripheralManager::stop() {
 }
 
 bool BlePeripheralManager::started() const {
-  xSemaphoreTake(m_mutex, portMAX_DELAY);
+  lock();
   auto res = m_started;
-  xSemaphoreGive(m_mutex);
+  unlock();
   return res;
 }
 

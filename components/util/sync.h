@@ -33,7 +33,7 @@ public:
         m_mutex(xSemaphoreCreateMutex()) {}
 
   Guard lock(uint32_t ticks_to_wait = portMAX_DELAY) {
-    xSemaphoreTake(m_mutex, ticks_to_wait);
+    xSemaphoreTakeRecursive(m_mutex, ticks_to_wait);
     return Guard(m_data.get(), m_mutex);
   }
 
@@ -58,7 +58,7 @@ public:
       : m_mutex(xSemaphoreCreateMutex()) {}
 
   Guard lock(uint32_t ticks_to_wait = portMAX_DELAY) {
-    xSemaphoreTake(m_mutex, ticks_to_wait);
+    xSemaphoreTakeRecursive(m_mutex, ticks_to_wait);
     return Guard(m_mutex);
   }
 
