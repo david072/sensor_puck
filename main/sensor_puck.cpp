@@ -332,6 +332,10 @@ extern "C" void app_main() {
   };
   ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_config, &g_i2c_handle));
 
+  ESP_LOGI("Setup", "Initialize display");
+  init_display();
+  init_display_touch(g_i2c_handle);
+
   g_rtc = new Bm8563(g_i2c_handle);
   update_system_time_from_rtc();
 
@@ -350,10 +354,6 @@ extern "C" void app_main() {
             "TCE to RTC", 4 * 2048, NULL, 1, NULL);
       },
       NULL);
-
-  ESP_LOGI("Setup", "Initialize display");
-  init_display();
-  init_display_touch(g_i2c_handle);
 
   {
     auto lvgl_guard = Data::the()->lock_lvgl();
