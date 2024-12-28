@@ -68,6 +68,9 @@ public:
   static constexpr float SDG_DOWNWARDS_ACCELERATION_THRESHOLD = 2.5;
   /// Value the absolute vertical acceleration has to be below to finish a SDG
   static constexpr float SDG_END_ACCELERATION = 0.5;
+  /// Minimum time for vertical acceleration to return back to
+  /// SDG_END_ACCELERATION
+  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS = 80;
   /// Maximum time for vertical acceleration to return back to
   /// SDG_END_ACCELERATION
   static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS = 300;

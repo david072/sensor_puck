@@ -158,6 +158,12 @@ bool Data::set_down_gesture_detected() {
 
   auto elapsed = millis() - m_set_down_gesture_start;
 
+  if (elapsed <= SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS &&
+      abs(m_acceleration.y) <= SDG_END_ACCELERATION) {
+    m_set_down_gesture_start = 0;
+    elapsed = millis() - m_set_down_gesture_start;
+  }
+
   if (elapsed <= SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS) {
     if (abs(m_acceleration.y) <= SDG_END_ACCELERATION) {
       ESP_LOGI("Data", "Detected SDG after %ld ms", elapsed);
