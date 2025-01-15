@@ -299,6 +299,7 @@ class _WifiConfigurationDialogState extends State<_WifiConfigurationDialog> {
           mainAxisSize: MainAxisSize.min,
           children: [
             TextFormField(
+              controller: ssidController,
               decoration: const InputDecoration(
                 border: OutlineInputBorder(),
                 alignLabelWithHint: true,

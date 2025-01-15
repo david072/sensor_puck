@@ -58,6 +58,7 @@ int access_cb(u16 conn_handle, u16 attr_handle, ble_gatt_access_ctxt* ctx,
     } else if (attr_handle == wifi_password_attr_handle) {
       u16 len = os_mbuf_len(ctx->om);
       std::string s(len, '-');
+      ESP_LOGI("ble", "reading wifi password");
       ASSERT_OR_RETURN(os_mbuf_copydata(ctx->om, 0, len, s.data()) == 0,
                        BLE_ATT_ERR_UNLIKELY);
       ESP_LOGI("ble", "setting wifi password to %s", s.c_str());

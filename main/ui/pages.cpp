@@ -109,7 +109,7 @@ SettingsPage::SettingsPage()
         lv_obj_add_state(cb, LV_STATE_DISABLED);
       },
       LV_EVENT_VALUE_CHANGED, m_wifi_checkbox);
-  if (Data::bluetooth_enabled())
+  if (Data::wifi_enabled())
     lv_obj_add_state(m_wifi_checkbox, LV_STATE_CHECKED);
 
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiEnabled,
