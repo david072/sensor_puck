@@ -125,7 +125,7 @@ bool Data::is_timer_running() const {
   return xTimerIsTimerActive(m_current_timer);
 }
 
-void Data::update_battery_percentage(uint32_t voltage) {
+void Data::update_battery_voltage(uint32_t voltage) {
   m_battery_percentage =
       round((voltage - MIN_BATTERY_VOLTAGE) /
             (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
@@ -175,14 +175,12 @@ bool Data::set_down_gesture_detected() {
   return false;
 }
 
-void Data::update_environment_measurements(float temp, float humidity,
-                                           float pressure) {
+void Data::update_temperature(float temp) {
   m_temperature = temp + TEMPERATURE_OFFSET;
-  m_humidity = humidity + HUMIDITY_OFFSET;
-  m_pressure = pressure;
 }
-
-void Data::update_co2_ppm_measurement(u16 co2_ppm) { m_co2_ppm = co2_ppm; }
+void Data::update_humidity(float hum) { m_humidity = hum + HUMIDITY_OFFSET; }
+void Data::update_pressure(float pressure) { m_pressure = pressure; }
+void Data::update_co2_ppm(u16 co2_ppm) { m_co2_ppm = co2_ppm; }
 
 tm Data::get_time() {
   auto now = time(NULL);

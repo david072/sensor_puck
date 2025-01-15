@@ -44,8 +44,9 @@ static constexpr size_t LVGL_DRAW_BUF_LINES = 100;
 
 static constexpr u32 MISC_TASK_PRIORITY = 0;
 static constexpr u32 DISPLAY_INACTIVITY_TASK_PRIORITY = 0;
-static constexpr u32 BME_TASK_PRIORITY = 1;
+static constexpr u32 ENV_TASK_PRIORITY = 1;
 static constexpr u32 BATTERY_TASK_PRIORITY = 1;
 static constexpr u32 LVGL_TASK_PRIORITY = 2;
+// This needs to be greater than or equal to LVGL's priority, since we need to
+// be executed periodically while LVGL is running to properly detect gestures.
 static constexpr u32 LSM_TASK_PRIORITY = LVGL_TASK_PRIORITY;
-static constexpr u32 SCD_TASK_PRIORITY = LVGL_TASK_PRIORITY;

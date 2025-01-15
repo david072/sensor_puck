@@ -84,11 +84,12 @@ public:
 
   static Mutex<Data>::Guard the();
 
-  void update_battery_percentage(uint32_t voltage);
+  void update_battery_voltage(uint32_t voltage);
   void update_inertial_measurements(Vector3 accel, Vector3 gyro);
-  void update_environment_measurements(float temp, float humidity,
-                                       float pressure);
-  void update_co2_ppm_measurement(u16 co2_ppm);
+  void update_temperature(float temp);
+  void update_humidity(float hum);
+  void update_pressure(float pressure);
+  void update_co2_ppm(u16 co2_ppm);
 
   static tm get_time();
   static tm get_utc_time();

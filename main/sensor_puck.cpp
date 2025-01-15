@@ -1,3 +1,4 @@
+#include "battery.h"
 #include "display_driver.h"
 #include <bm8563.h>
 #include <bme688.h>
@@ -22,18 +23,11 @@
 
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
-constexpr u32 BATTERY_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 BATTERY_READ_INTERVAL = 30 * 1000;
-constexpr u32 BATTERY_SAMPLES = 20;
-
-constexpr u32 BME_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 BME_READ_INTERVAL_MS = 30 * 1000;
+constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
+constexpr u32 ENV_READ_INTERVAL_MS = 30 * 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
-
-constexpr u32 SCD_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 SCD_READ_INTERVAL_MS = 30 * 1024;
 
 constexpr u32 DISPLAY_INACTIVITY_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 DISPLAY_INACTIVITY_TASK_INTERVAL_MS = 10 * 1000;
@@ -109,33 +103,60 @@ void add_grouped_pages() {
   ([&] { g_pages.push_back(new Page(container)); }(), ...);
 }
 
-void bme_read_task(void* arg) {
-  auto init_bme = []() {
+void environment_read_task(void* arg) {
+  struct Sensors {
+    Bme688 bme;
+    Scd41 scd;
+    Battery battery;
+  };
+
+  auto init = []() {
     auto i2c_guard = Data::the()->lock_i2c();
     Bme688 bme(g_i2c_handle);
     bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
     bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
     bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
     bme.set_iir_filter_size(Bme688::FilterSize::Size3);
-    return bme;
+
+    Scd41 scd(g_i2c_handle);
+    scd.start_low_power_periodic_measurement();
+
+    Battery bat(BATTERY_READ_PIN);
+
+    return Sensors{
+        .bme = bme,
+        .scd = scd,
+        .battery = bat,
+    };
   };
 
-  auto bme = init_bme();
+  auto sensors = init();
 
   while (true) {
     {
       auto data = Data::the();
       auto i2c_guard = data->lock_i2c();
-      auto values = bme.read_sensor();
-      if (values.has_value()) {
-        data->update_environment_measurements(
-            values->temperature, values->humidity, values->pressure);
+      auto bme_data = sensors.bme.read_sensor();
+      auto co2_ppm = sensors.scd.read_co2();
+
+      if (bme_data) {
+        data->update_temperature(bme_data->temperature);
+        data->update_humidity(bme_data->humidity);
+        data->update_pressure(bme_data->pressure);
       } else {
-        ESP_LOGE("BME688", "Failed reading sensor!");
+        ESP_LOGW("BME688", "Failed reading sensor!");
       }
+
+      if (co2_ppm) {
+        data->update_co2_ppm(*co2_ppm);
+      } else {
+        ESP_LOGW("SCD41", "Failed reading sensor!");
+      }
+
+      data->update_battery_voltage(sensors.battery.read_voltage());
     }
 
-    vTaskDelay(pdMS_TO_TICKS(BME_READ_INTERVAL_MS));
+    vTaskDelay(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS));
   }
 }
 
@@ -160,75 +181,6 @@ void lsm_read_task(void* arg) {
     }
 
     vTaskDelay(pdMS_TO_TICKS(LSM_READ_INTERVAL_MS));
-  }
-}
-
-void scd_read_task(void* arg) {
-  auto init_scd = []() {
-    auto i2c_guard = Data::the()->lock_i2c();
-    Scd41 scd(g_i2c_handle);
-    scd.start_low_power_periodic_measurement();
-    return scd;
-  };
-
-  auto scd = init_scd();
-
-  while (true) {
-    {
-      auto data = Data::the();
-      auto i2c_guard = data->lock_i2c();
-      auto co2 = scd.read_co2();
-      if (co2) {
-        data->update_co2_ppm_measurement(*co2);
-      } else {
-        ESP_LOGE("SCD41", "No CO2 reading available!");
-      }
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(SCD_READ_INTERVAL_MS));
-  }
-}
-
-void battery_read_task(void* arg) {
-  adc_unit_t adc_unit;
-  adc_channel_t adc_channel;
-  ESP_ERROR_CHECK(
-      adc_oneshot_io_to_channel(BATTERY_READ_PIN, &adc_unit, &adc_channel));
-
-  adc_oneshot_unit_handle_t adc_handle;
-  adc_oneshot_unit_init_cfg_t init_config = {
-      .unit_id = adc_unit,
-      .ulp_mode = ADC_ULP_MODE_DISABLE,
-  };
-  ESP_ERROR_CHECK(adc_oneshot_new_unit(&init_config, &adc_handle));
-
-  adc_oneshot_chan_cfg_t config = {
-      .atten = ADC_ATTEN_DB_12,
-      .bitwidth = ADC_BITWIDTH_DEFAULT,
-  };
-  ESP_ERROR_CHECK(adc_oneshot_config_channel(adc_handle, adc_channel, &config));
-
-  adc_cali_handle_t cali_handle;
-  adc_cali_curve_fitting_config_t cali_config = {
-      .unit_id = adc_unit,
-      .atten = ADC_ATTEN_DB_12,
-      .bitwidth = ADC_BITWIDTH_DEFAULT,
-  };
-  ESP_ERROR_CHECK(
-      adc_cali_create_scheme_curve_fitting(&cali_config, &cali_handle));
-
-  while (true) {
-    int battery_voltage = 0;
-    for (int i = 0; i < BATTERY_SAMPLES; ++i) {
-      int v;
-      ESP_ERROR_CHECK(adc_oneshot_get_calibrated_result(adc_handle, cali_handle,
-                                                        adc_channel, &v));
-      battery_voltage += v;
-    }
-
-    Data::the()->update_battery_percentage(battery_voltage / BATTERY_SAMPLES);
-
-    vTaskDelay(pdMS_TO_TICKS(BATTERY_READ_INTERVAL));
   }
 }
 
@@ -411,14 +363,10 @@ extern "C" void app_main() {
   }
 
   ESP_LOGI("Setup", "Starting sensor tasks");
-  xTaskCreate(bme_read_task, "BME688", BME_TASK_STACK_SIZE, NULL,
-              BME_TASK_PRIORITY, NULL);
+  xTaskCreate(environment_read_task, "ENV SENS", ENV_TASK_STACK_SIZE, NULL,
+              ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
-  xTaskCreate(scd_read_task, "SCD41", SCD_TASK_STACK_SIZE, NULL,
-              SCD_TASK_PRIORITY, NULL);
-  xTaskCreate(battery_read_task, "Battery", BATTERY_TASK_STACK_SIZE, NULL,
-              BATTERY_TASK_PRIORITY, NULL);
 
   xTaskCreate(display_inactivity_task, "DP inact",
               DISPLAY_INACTIVITY_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY,
