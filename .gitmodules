@@ -1,3 +1,6 @@
 [submodule "components/bme688/bme68x"]
 	path = components/bme688/bme68x
 	url = https://github.com/boschsensortec/BME68x_SensorAPI
+[submodule "components/scd41/embedded_i2c_scd4x"]
+	path = components/scd41/embedded_i2c_scd4x
+	url = https://github.com/Sensirion/embedded-i2c-scd4x
