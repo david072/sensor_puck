@@ -182,6 +182,8 @@ void Data::update_environment_measurements(float temp, float humidity,
   m_pressure = pressure;
 }
 
+void Data::update_co2_ppm_measurement(u16 co2_ppm) { m_co2_ppm = co2_ppm; }
+
 tm Data::get_time() {
   auto now = time(NULL);
   tm time;

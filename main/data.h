@@ -88,6 +88,7 @@ public:
   void update_inertial_measurements(Vector3 accel, Vector3 gyro);
   void update_environment_measurements(float temp, float humidity,
                                        float pressure);
+  void update_co2_ppm_measurement(u16 co2_ppm);
 
   static tm get_time();
   static tm get_utc_time();
@@ -123,6 +124,7 @@ public:
   float temperature() const { return m_temperature; }
   float humidity() const { return m_humidity; }
   float pressure() const { return m_pressure; }
+  u16 co2_ppm() const { return m_co2_ppm; }
 
 private:
   bool set_down_gesture_detected();
@@ -155,4 +157,6 @@ private:
   float m_humidity = 0;
   /// hPa
   float m_pressure = 0;
+  /// ppm
+  u16 m_co2_ppm;
 };

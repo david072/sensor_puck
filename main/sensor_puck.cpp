@@ -12,6 +12,7 @@
 #include <esp_sleep.h>
 #include <lsm6dsox.h>
 #include <lvgl.h>
+#include <scd41.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
 #include <vector>
@@ -30,6 +31,9 @@ constexpr u32 BME_READ_INTERVAL_MS = 30 * 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
+
+constexpr u32 SCD_TASK_STACK_SIZE = 5 * 1024;
+constexpr u32 SCD_READ_INTERVAL_MS = 30 * 1024;
 
 constexpr u32 DISPLAY_INACTIVITY_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 DISPLAY_INACTIVITY_TASK_INTERVAL_MS = 10 * 1000;
@@ -159,6 +163,32 @@ void lsm_read_task(void* arg) {
   }
 }
 
+void scd_read_task(void* arg) {
+  auto init_scd = []() {
+    auto i2c_guard = Data::the()->lock_i2c();
+    Scd41 scd(g_i2c_handle);
+    scd.start_low_power_periodic_measurement();
+    return scd;
+  };
+
+  auto scd = init_scd();
+
+  while (true) {
+    {
+      auto data = Data::the();
+      auto i2c_guard = data->lock_i2c();
+      auto co2 = scd.read_co2();
+      if (co2) {
+        data->update_co2_ppm_measurement(*co2);
+      } else {
+        ESP_LOGE("SCD41", "No CO2 reading available!");
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(SCD_READ_INTERVAL_MS));
+  }
+}
+
 void battery_read_task(void* arg) {
   adc_unit_t adc_unit;
   adc_channel_t adc_channel;
@@ -282,8 +312,7 @@ void display_inactivity_task(void* arg) {
       }
     }
 
-    // vTaskDelay(pdMS_TO_TICKS(DISPLAY_INACTIVITY_TASK_INTERVAL_MS));
-    vTaskDelay(pdMS_TO_TICKS(5000));
+    vTaskDelay(pdMS_TO_TICKS(DISPLAY_INACTIVITY_TASK_INTERVAL_MS));
   }
 }
 
@@ -386,6 +415,8 @@ extern "C" void app_main() {
               BME_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
+  xTaskCreate(scd_read_task, "SCD41", SCD_TASK_STACK_SIZE, NULL,
+              SCD_TASK_PRIORITY, NULL);
   xTaskCreate(battery_read_task, "Battery", BATTERY_TASK_STACK_SIZE, NULL,
               BATTERY_TASK_PRIORITY, NULL);
 

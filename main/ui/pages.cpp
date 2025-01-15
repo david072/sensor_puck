@@ -598,6 +598,7 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
 
 void AirQualityPage::update() {
   lv_label_set_text_fmt(m_temperature, "%.1f", Data::the()->temperature());
+  lv_label_set_text_fmt(m_co2_ppm, "%d", Data::the()->co2_ppm());
 }
 
 ExtendedEnvironmentInfoPage::ExtendedEnvironmentInfoPage(lv_obj_t* parent)
