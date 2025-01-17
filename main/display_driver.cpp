@@ -52,8 +52,14 @@ void lvgl_port_task(void* arg) {
     {
       auto lvgl_guard = Data::the()->lock_lvgl();
       time_until_next = lv_timer_handler();
-      // make sure to not trigger the watch dog waiting for next execution
+      // make sure to not trigger the watchdog waiting for next execution
       time_until_next = MIN(time_until_next, MAX_DELAY_MS);
+
+      if (lv_display_get_inactive_time(NULL) >
+          DEEP_SLEEP_DISPLAY_INACTIVITY_MS) {
+        esp_event_post(DATA_EVENT_BASE, Data::Event::Inactivity, NULL, 0, 10);
+        lv_display_trigger_activity(NULL);
+      }
     }
     usleep(1000 * time_until_next);
   }

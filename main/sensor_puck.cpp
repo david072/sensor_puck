@@ -39,9 +39,6 @@ constexpr u32 ENV_READ_INTERVAL_MS = 30 * 1000;
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
 
-constexpr u32 DISPLAY_INACTIVITY_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 DISPLAY_INACTIVITY_TASK_INTERVAL_MS = 10 * 1000;
-
 i2c_master_bus_handle_t g_i2c_handle;
 
 Bm8563* g_rtc;
@@ -283,28 +280,6 @@ void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-void display_inactivity_task(void* arg) {
-  while (true) {
-    {
-      auto d = Data::the();
-      auto guard = d->lock_lvgl();
-      if (lv_display_get_inactive_time(NULL) >
-          DEEP_SLEEP_DISPLAY_INACTIVITY_MS) {
-        if (can_sleep()) {
-          guard.Guard::~Guard();
-          d.Guard::~Guard();
-
-          enter_deep_sleep();
-        }
-
-        lv_display_trigger_activity(NULL);
-      }
-    }
-
-    vTaskDelay(pdMS_TO_TICKS(DISPLAY_INACTIVITY_TASK_INTERVAL_MS));
-  }
-}
-
 void recover_from_sleep() {
   auto ulp_last_co2 = static_cast<u16>(ulp_last_measurement);
   if (did_initialize_ulp_riscv && ulp_last_co2 > 0) {
@@ -436,15 +411,27 @@ extern "C" void app_main() {
       },
       NULL);
 
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::Inactivity,
+      [](void*, esp_event_base_t, i32, void*) {
+        // Don't block event handler. Probably doesn't actually matter here, but
+        // better safe than sorry.
+        xTaskCreate(
+            [](void*) {
+              if (!can_sleep())
+                return;
+              enter_deep_sleep();
+              vTaskDelete(NULL);
+            },
+            "BEGIN DEEP SLP", 5 * 1024, NULL, BEGIN_DEEP_SLEEP_PRIORITY, NULL);
+      },
+      NULL);
+
   ESP_LOGI("Setup", "Starting sensor tasks");
   xTaskCreate(environment_read_task, "ENV SENS", ENV_TASK_STACK_SIZE, NULL,
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
-
-  xTaskCreate(display_inactivity_task, "DP inact",
-              DISPLAY_INACTIVITY_TASK_STACK_SIZE, NULL, LVGL_TASK_PRIORITY,
-              NULL);
 
   ESP_LOGI("Setup", "Setup finished successfully!");
 }
