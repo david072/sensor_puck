@@ -7,15 +7,10 @@
 Scd41::Scd41(i2c_master_bus_handle_t i2c_handle, u16 address) {
   sensirion_i2c_hal_init(i2c_handle, address);
 
-  // TODO: Currently, we don't do this, since we just leave the sensor running
-  // while in deep sleep. This is because this way, when we wake up, we
-  // immediately have sensor readings available (as opposed to having to wait
-  // the 30s it takes to get a low power measurement).
-
   // clean up potential SCD41 states
-  // scd4x_wake_up();
-  // scd4x_stop_periodic_measurement();
-  // scd4x_reinit();
+  scd4x_wake_up();
+  scd4x_stop_periodic_measurement();
+  scd4x_reinit();
 }
 
 void Scd41::start_low_power_periodic_measurement() {
