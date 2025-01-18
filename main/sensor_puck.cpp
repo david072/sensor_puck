@@ -287,7 +287,7 @@ void recover_from_sleep() {
   }
 
   switch (esp_sleep_get_wakeup_cause()) {
-  case ESP_SLEEP_WAKEUP_COCPU: {
+  case ESP_SLEEP_WAKEUP_ULP: {
     // Scroll to the page showing CO2 PPM. This is very ugly; the 8 is a magic
     // number for the padding between the pages in the scroll view (idk if its
     // correct though).
