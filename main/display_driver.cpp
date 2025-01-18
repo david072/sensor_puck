@@ -86,7 +86,6 @@ void init_display() {
   ESP_ERROR_CHECK(spi_bus_initialize(DP_HOST, &buscfg, SPI_DMA_CH_AUTO));
 
   ESP_LOGI("Display", "Install panel IO");
-  esp_lcd_panel_io_handle_t io_handle = NULL;
   esp_lcd_panel_io_spi_config_t io_config = {
       .cs_gpio_num = DP_CS,
       .dc_gpio_num = DP_DC,
@@ -96,24 +95,24 @@ void init_display() {
       .lcd_cmd_bits = DP_CMD_BIT_WIDTH,
       .lcd_param_bits = DP_PARAM_BIT_WIDTH,
   };
-  ESP_ERROR_CHECK(esp_lcd_new_panel_io_spi(
-      static_cast<esp_lcd_spi_bus_handle_t>(DP_HOST), &io_config, &io_handle));
+  ESP_ERROR_CHECK(
+      esp_lcd_new_panel_io_spi(static_cast<esp_lcd_spi_bus_handle_t>(DP_HOST),
+                               &io_config, &g_panel_io_handle));
 
   ESP_LOGI("Display", "Install GC9A01 panel driver");
-  esp_lcd_panel_handle_t panel_handle = NULL;
   esp_lcd_panel_dev_config_t panel_config = {
       .reset_gpio_num = -1,
       .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_BGR,
       .bits_per_pixel = 16,
   };
-  ESP_ERROR_CHECK(
-      esp_lcd_new_panel_gc9a01(io_handle, &panel_config, &panel_handle));
+  ESP_ERROR_CHECK(esp_lcd_new_panel_gc9a01(g_panel_io_handle, &panel_config,
+                                           &g_panel_handle));
 
-  ESP_ERROR_CHECK(esp_lcd_panel_reset(panel_handle));
-  ESP_ERROR_CHECK(esp_lcd_panel_init(panel_handle));
-  ESP_ERROR_CHECK(esp_lcd_panel_invert_color(panel_handle, true));
-  ESP_ERROR_CHECK(esp_lcd_panel_mirror(panel_handle, true, false));
-  ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(panel_handle, true));
+  ESP_ERROR_CHECK(esp_lcd_panel_reset(g_panel_handle));
+  ESP_ERROR_CHECK(esp_lcd_panel_init(g_panel_handle));
+  ESP_ERROR_CHECK(esp_lcd_panel_invert_color(g_panel_handle, true));
+  ESP_ERROR_CHECK(esp_lcd_panel_mirror(g_panel_handle, true, false));
+  ESP_ERROR_CHECK(esp_lcd_panel_disp_on_off(g_panel_handle, true));
 
   set_display_backlight(true);
 
@@ -129,7 +128,7 @@ void init_display() {
 
   lv_display_set_buffers(display, buf1, buf2, draw_buffer_sz,
                          LV_DISPLAY_RENDER_MODE_PARTIAL);
-  lv_display_set_user_data(display, panel_handle);
+  lv_display_set_user_data(display, g_panel_handle);
   lv_display_set_color_format(display, LV_COLOR_FORMAT_RGB565);
   lv_display_set_flush_cb(display, lvgl_flush_cb);
 
@@ -148,8 +147,8 @@ void init_display() {
   esp_lcd_panel_io_callbacks_t const cbs = {
       .on_color_trans_done = lcd_on_color_trans_done,
   };
-  ESP_ERROR_CHECK(
-      esp_lcd_panel_io_register_event_callbacks(io_handle, &cbs, display));
+  ESP_ERROR_CHECK(esp_lcd_panel_io_register_event_callbacks(g_panel_io_handle,
+                                                            &cbs, display));
 
   ESP_LOGI("Display", "Create LVGL task");
   xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL,
@@ -161,16 +160,18 @@ void init_display() {
 void clear_display() {
   static constexpr size_t BUF_LINES = 10;
 
-  auto panel = static_cast<esp_lcd_panel_handle_t>(
-      lv_display_get_user_data(lv_display_get_default()));
-
   lv_color16_t* zeroes = static_cast<lv_color16_t*>(
       calloc(DP_H_RES * BUF_LINES, sizeof(lv_color16_t)));
 
   for (int y = 0; y <= DP_V_RES; y += BUF_LINES - 1) {
-    esp_lcd_panel_draw_bitmap(panel, 0, y, DP_H_RES + 1, y + BUF_LINES - 1,
-                              zeroes);
+    esp_lcd_panel_draw_bitmap(g_panel_handle, 0, y, DP_H_RES + 1,
+                              y + BUF_LINES - 1, zeroes);
   }
+}
+
+void display_enter_sleep_mode() {
+  esp_lcd_panel_io_tx_param(g_panel_io_handle, GC9A01_CMD_ENTER_SLEEP_MODE,
+                            NULL, 0);
 }
 
 void set_display_backlight(bool enable) {

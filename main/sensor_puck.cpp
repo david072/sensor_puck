@@ -259,6 +259,7 @@ void enter_deep_sleep() {
     auto lvgl_guard = d->lock_lvgl();
     set_display_backlight(false);
     clear_display();
+    display_enter_sleep_mode();
   }
 
   if (!did_initialize_ulp_riscv) {
