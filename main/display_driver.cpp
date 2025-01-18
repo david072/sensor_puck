@@ -61,6 +61,7 @@ void lvgl_port_task(void* arg) {
         lv_display_trigger_activity(NULL);
       }
     }
+
     usleep(1000 * time_until_next);
   }
 }

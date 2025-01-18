@@ -29,7 +29,6 @@ extern const u8 ulp_riscv_bin_start[] asm("_binary_ulp_riscv_app_bin_start");
 extern const u8 ulp_riscv_bin_end[] asm("_binary_ulp_riscv_app_bin_end");
 
 constexpr u32 ULP_RISCV_WAKEUP_PERIOD_US = 60 * 1000 * 1000;
-constexpr u32 ULP_RISCV_CO2_WAKEUP_THRESHOLD_PPM = 2000;
 
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
@@ -269,7 +268,7 @@ void enter_deep_sleep() {
     did_initialize_ulp_riscv = true;
   }
 
-  ulp_wake_threshold_ppm = ULP_RISCV_CO2_WAKEUP_THRESHOLD_PPM;
+  ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
 
   ulp_timer_resume();
   ESP_ERROR_CHECK(ulp_riscv_run());
@@ -287,6 +286,16 @@ void recover_from_sleep() {
   }
 
   switch (esp_sleep_get_wakeup_cause()) {
+  case ESP_SLEEP_WAKEUP_COCPU: {
+    // Scroll to the page showing CO2 PPM. This is very ugly; the 8 is a magic
+    // number for the padding between the pages in the scroll view (idk if its
+    // correct though).
+    lv_obj_scroll_to_y(g_ui_container, lv_obj_get_height(lv_scr_act()) + 8,
+                       LV_ANIM_ON);
+    auto* scroll_container = lv_obj_get_child(g_ui_container, 1);
+    lv_obj_scroll_to_x(scroll_container, 0, LV_ANIM_ON);
+    break;
+  }
   case ESP_SLEEP_WAKEUP_TIMER: {
     ESP_LOGI("Setup", "Woken up by timer");
     Data::the()->recover_timer(deep_sleep_timer.original_timer_duration, 0);

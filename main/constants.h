@@ -6,6 +6,8 @@
 
 static constexpr u32 DEEP_SLEEP_DISPLAY_INACTIVITY_MS = 60 * 1000;
 
+static constexpr u32 BAD_CO2_PPM_LEVEL = 2000;
+
 // SeeedStudio display schematic:
 // https://files.seeedstudio.com/wiki/round_display_for_xiao/SeeedStudio_Round_Display_for_XIAO_v1.1_SCH_230407.pdf
 
