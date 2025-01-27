@@ -1,4 +1,5 @@
 #include "display_driver.h"
+#include <cmath>
 #include <data.h>
 #include <driver/gpio.h>
 #include <esp_err.h>
@@ -20,6 +21,10 @@ constexpr size_t CHSC6X_READ_POINT_LEN = 5;
 constexpr long TOUCH_RELEASE_DEBOUNCE_MS = 50;
 constexpr u32 CHSC6X_I2C_SPEED = 100000;
 constexpr u32 CHSC6X_I2C_TIMEOUT_MS = 50;
+
+/// The maximum speed in px/ms between the previous touch position and the
+/// current, for the current position to be considered valid.
+constexpr float MAX_POINTER_SPEED_PX_PER_MS = 3.5f;
 
 i2c_master_dev_handle_t g_chsc6x_handle;
 
@@ -238,6 +243,15 @@ void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
   if (dist_center_sq > sq(DP_H_RES / 2)) {
     ESP_LOGD("Display", "Filtered out-of-display-circle position (%d, %d)",
              touch_x, touch_y);
+    return;
+  }
+
+  double dist = sqrt(sq((float)touch_x - (float)last_touch_x) +
+                     sq((float)touch_y - (float)last_touch_y));
+  double speed = dist / static_cast<float>(millis() - last_pressed);
+  if (speed > MAX_POINTER_SPEED_PX_PER_MS) {
+    ESP_LOGI("Display", "Filtered rapid movement (%.2f px/ms)", speed);
+    last_pressed = millis();
     return;
   }
 
