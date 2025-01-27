@@ -18,13 +18,8 @@
 #include <unistd.h>
 
 constexpr size_t CHSC6X_READ_POINT_LEN = 5;
-constexpr long TOUCH_RELEASE_DEBOUNCE_MS = 50;
 constexpr u32 CHSC6X_I2C_SPEED = 100000;
 constexpr u32 CHSC6X_I2C_TIMEOUT_MS = 50;
-
-/// The maximum speed in px/ms between the previous touch position and the
-/// current, for the current position to be considered valid.
-constexpr float MAX_POINTER_SPEED_PX_PER_MS = 3.5f;
 
 i2c_master_dev_handle_t g_chsc6x_handle;
 
@@ -215,19 +210,23 @@ void chsc6x_get_xy(u8* x, u8* y) {
 }
 
 void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
-  static u32 last_pressed = 0;
   static u8 last_touch_x = 0;
   static u8 last_touch_y = 0;
 
   if (!chsc6x_is_pressed()) {
-    if (millis() - last_pressed > TOUCH_RELEASE_DEBOUNCE_MS) {
-      data->state = LV_INDEV_STATE_RELEASED;
-    }
+    data->state = LV_INDEV_STATE_RELEASED;
+    last_touch_x = 0;
+    last_touch_y = 0;
     return;
   }
 
   u8 touch_x, touch_y;
   chsc6x_get_xy(&touch_x, &touch_y);
+
+  if (last_touch_x == 0 || last_touch_y == 0) {
+    last_touch_x = touch_x;
+    last_touch_y = touch_y;
+  }
 
   data->state = LV_INDEV_STATE_PRESSED;
   data->point.x = last_touch_x;
@@ -246,18 +245,8 @@ void chsc6x_read(lv_indev_t* indev, lv_indev_data_t* data) {
     return;
   }
 
-  double dist = sqrt(sq((float)touch_x - (float)last_touch_x) +
-                     sq((float)touch_y - (float)last_touch_y));
-  double speed = dist / static_cast<float>(millis() - last_pressed);
-  if (speed > MAX_POINTER_SPEED_PX_PER_MS) {
-    ESP_LOGI("Display", "Filtered rapid movement (%.2f px/ms)", speed);
-    last_pressed = millis();
-    return;
-  }
-
   data->state = LV_INDEV_STATE_PRESSED;
   ESP_LOGD("Display", "Touch %d, %d", touch_x, touch_y);
-  last_pressed = millis();
   data->point.x = last_touch_x = touch_x;
   data->point.y = last_touch_y = touch_y;
 }

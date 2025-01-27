@@ -49,6 +49,7 @@ SettingsPage::SettingsPage()
 
   spacer(page_container(), 0, 10);
 
+#if 0
   m_bluetooth_checkbox = lv_checkbox_create(page_container());
   lv_checkbox_set_text(m_bluetooth_checkbox, "Bluetooth");
   lv_obj_add_event_cb(
@@ -116,6 +117,7 @@ SettingsPage::SettingsPage()
                              async_check_checkbox, m_wifi_checkbox);
   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiDisabled,
                              async_uncheck_checkbox, m_wifi_checkbox);
+#endif
 }
 
 SettingsPage::~SettingsPage() {
