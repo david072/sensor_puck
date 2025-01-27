@@ -118,7 +118,6 @@ void environment_read_task(void* arg) {
   };
 
   auto init = []() {
-    auto i2c_guard = Data::the()->lock_i2c();
     Bme688 bme(g_i2c_handle);
     bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
     bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
@@ -142,7 +141,6 @@ void environment_read_task(void* arg) {
   while (true) {
     {
       auto data = Data::the();
-      auto i2c_guard = data->lock_i2c();
       auto bme_data = sensors.bme.read_sensor();
       auto co2_ppm = sensors.scd.read_co2();
 
@@ -169,7 +167,6 @@ void environment_read_task(void* arg) {
 
 void lsm_read_task(void* arg) {
   auto init_lsm = []() {
-    auto i2c_guard = Data::the()->lock_i2c();
     Lsm6dsox lsm(g_i2c_handle);
     return lsm;
   };
@@ -179,7 +176,6 @@ void lsm_read_task(void* arg) {
   while (true) {
     {
       auto data = Data::the();
-      auto i2c_guard = data->lock_i2c();
       auto values = lsm.read_sensor();
 
       data->update_inertial_measurements(
@@ -193,7 +189,6 @@ void lsm_read_task(void* arg) {
 
 void update_system_time_from_rtc() {
   auto data = Data::the();
-  auto guard = data->lock_i2c();
   auto rtc = g_rtc->read_date_time();
   tm rt = {
       .tm_sec = rtc.second,
@@ -212,7 +207,6 @@ void update_system_time_from_rtc() {
 }
 
 void set_rtc_time(struct tm utc_tm) {
-  auto guard = Data::the()->lock_i2c();
   ESP_LOGI("BM8563", "Setting RTC time to %02d:%02d:%02d, %02d.%02d.%04d",
            utc_tm.tm_hour, utc_tm.tm_min, utc_tm.tm_sec, utc_tm.tm_mday,
            utc_tm.tm_mon, utc_tm.tm_year);

@@ -97,7 +97,6 @@ public:
   static void set_time(tm time);
   static void set_time(time_t unix_timestamp);
 
-  Lock::Guard lock_i2c() { return m_i2c_lock.lock(); }
   Lock::Guard lock_lvgl() { return m_lvgl_lock.lock(); }
 
   static void enable_bluetooth();
@@ -135,7 +134,6 @@ private:
            SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS;
   }
 
-  Lock m_i2c_lock;
   Lock m_lvgl_lock;
 
   TimerHandle_t m_current_timer{};

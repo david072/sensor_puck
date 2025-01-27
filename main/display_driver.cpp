@@ -188,8 +188,6 @@ bool chsc6x_is_pressed() {
 }
 
 void chsc6x_get_xy(u8* x, u8* y) {
-  auto i2c_guard = Data::the()->lock_i2c();
-
   u8 temp[CHSC6X_READ_POINT_LEN] = {0};
   u8 tx = 0;
 
