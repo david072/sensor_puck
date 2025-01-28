@@ -7,10 +7,11 @@
 
 volatile ulp_riscv_lock_t lock;
 
-volatile uint32_t last_measurement = 0;
+volatile uint32_t last_co2_measurement = 0;
+volatile uint32_t last_temperature_measurement = 0;
 volatile uint32_t wake_threshold_ppm = 0;
 
-uint16_t scd41_measure_single_shot() {
+void scd41_measure_single_shot(void) {
   scd4x_measure_single_shot();
 
   bool data_rdy = false;
@@ -24,7 +25,9 @@ uint16_t scd41_measure_single_shot() {
   uint16_t co2 = 0;
   int32_t temp = 0, rh = 0;
   scd4x_read_measurement(&co2, &temp, &rh);
-  return co2;
+
+  last_co2_measurement = co2;
+  last_temperature_measurement = temp;
 }
 
 int main(void) {
@@ -38,8 +41,8 @@ int main(void) {
   scd4x_stop_periodic_measurement();
   scd4x_reinit();
 
-  last_measurement = scd41_measure_single_shot();
-  if (last_measurement >= wake_threshold_ppm) {
+  scd41_measure_single_shot();
+  if (last_co2_measurement >= wake_threshold_ppm) {
     ulp_riscv_wakeup_main_processor();
   }
 

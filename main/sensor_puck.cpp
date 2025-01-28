@@ -142,18 +142,19 @@ void environment_read_task(void* arg) {
     {
       auto data = Data::the();
       auto bme_data = sensors.bme.read_sensor();
-      auto co2_ppm = sensors.scd.read_co2();
+      auto scd_data = sensors.scd.read();
 
       if (bme_data) {
-        data->update_temperature(bme_data->temperature);
+        // data->update_temperature(bme_data->temperature);
         data->update_humidity(bme_data->humidity);
         data->update_pressure(bme_data->pressure);
       } else {
         ESP_LOGW("BME688", "Failed reading sensor!");
       }
 
-      if (co2_ppm) {
-        data->update_co2_ppm(*co2_ppm);
+      if (scd_data) {
+        data->update_temperature(scd_data->temperature);
+        data->update_co2_ppm(scd_data->co2);
       } else {
         ESP_LOGW("SCD41", "Failed reading sensor!");
       }
@@ -275,9 +276,13 @@ void enter_deep_sleep() {
 }
 
 void recover_from_sleep() {
-  auto ulp_last_co2 = static_cast<u16>(ulp_last_measurement);
+  auto ulp_last_co2 = static_cast<u16>(ulp_last_co2_measurement);
+  auto ulp_last_temp =
+      static_cast<float>(static_cast<i16>(ulp_last_temperature_measurement)) /
+      1000.f;
   if (did_initialize_ulp_riscv && ulp_last_co2 > 0) {
     Data::the()->update_co2_ppm(ulp_last_co2);
+    Data::the()->update_temperature(ulp_last_temp);
   }
 
   switch (esp_sleep_get_wakeup_cause()) {

@@ -56,7 +56,7 @@ public:
       battery_voltage_to_measured_voltage(3.05);
 
   /// Temperature correction offset in °C
-  static constexpr float TEMPERATURE_OFFSET = -11;
+  static constexpr float TEMPERATURE_OFFSET = 0;
   /// Humidity correction offset in %
   static constexpr float HUMIDITY_OFFSET = 12;
 

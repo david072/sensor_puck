@@ -17,7 +17,7 @@ void Scd41::start_low_power_periodic_measurement() {
   scd4x_start_low_power_periodic_measurement();
 }
 
-std::optional<u16> Scd41::read_co2() {
+std::optional<Scd41::Data> Scd41::read() {
   bool data_ready;
   if (auto res = scd4x_get_data_ready_flag(&data_ready); res != 0) {
     ESP_LOGE("SCD41", "Getting data ready flag failed: %d", res);
@@ -35,7 +35,11 @@ std::optional<u16> Scd41::read_co2() {
     return std::nullopt;
   }
 
-  return co2;
+  return Data{
+      .co2 = co2,
+      .temperature = static_cast<float>(temp) / 1000.f,
+      .humidity = static_cast<float>(hum) / 1000.f,
+  };
 }
 
 void Scd41::stop_periodic_measurement() { scd4x_stop_periodic_measurement(); }
