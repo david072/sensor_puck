@@ -161,6 +161,12 @@ void environment_read_task(void* arg) {
       if (scd_data) {
         data->update_temperature(scd_data->temperature);
         data->update_co2_ppm(scd_data->co2);
+
+        if (did_initialize_ulp_riscv) {
+          ulp_last_co2_measurement = scd_data->co2;
+          ulp_last_temperature_measurement =
+              static_cast<u32>(scd_data->temperature * 1000.f);
+        }
       } else {
         ESP_LOGW("SCD41", "Failed reading sensor!");
       }
