@@ -13,7 +13,13 @@ Scd41::Scd41(i2c_master_bus_handle_t i2c_handle, u16 address) {
   scd4x_reinit();
 }
 
+void Scd41::start_periodic_measurement() {
+  stop_periodic_measurement();
+  scd4x_start_periodic_measurement();
+}
+
 void Scd41::start_low_power_periodic_measurement() {
+  stop_periodic_measurement();
   scd4x_start_low_power_periodic_measurement();
 }
 

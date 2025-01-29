@@ -25,6 +25,8 @@
 // some include in this file fucks the compiler so hard omg
 #include <ble_peripheral_manager.h>
 
+#define SCD_LOW_POWER false
+
 extern const u8 ulp_riscv_bin_start[] asm("_binary_ulp_riscv_app_bin_start");
 extern const u8 ulp_riscv_bin_end[] asm("_binary_ulp_riscv_app_bin_end");
 
@@ -33,7 +35,7 @@ constexpr u32 ULP_RISCV_WAKEUP_PERIOD_US = 60 * 1000 * 1000;
 constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
 
 constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 ENV_READ_INTERVAL_MS = 30 * 1000;
+constexpr u32 ENV_READ_INTERVAL_MS = 10 * 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
@@ -125,7 +127,11 @@ void environment_read_task(void* arg) {
     bme.set_iir_filter_size(Bme688::FilterSize::Size3);
 
     Scd41 scd(g_i2c_handle);
+#if SCD_LOW_POWER
     scd.start_low_power_periodic_measurement();
+#else
+    scd.start_periodic_measurement();
+#endif
 
     Battery bat(BATTERY_READ_PIN);
 

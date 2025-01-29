@@ -20,6 +20,7 @@ public:
 
   Scd41(i2c_master_bus_handle_t i2c_handle, u16 address = DEFAULT_ADDRESS);
 
+  void start_periodic_measurement();
   void start_low_power_periodic_measurement();
   std::optional<Data> read();
   /// Stops the period measurement (both normal and low power).
