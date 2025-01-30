@@ -135,6 +135,7 @@ void environment_read_task(void* arg) {
 
     Battery bat(BATTERY_READ_PIN);
 
+    ESP_LOGI("ENV", "Sensors initialized");
     return Sensors{
         .bme = bme,
         .scd = scd,
@@ -287,16 +288,19 @@ void enter_deep_sleep() {
   esp_deep_sleep_start();
 }
 
-void recover_from_sleep() {
+void load_measurements_from_ulp() {
+  if (!did_initialize_ulp_riscv)
+    return;
+
   auto ulp_last_co2 = static_cast<u16>(ulp_last_co2_measurement);
   auto ulp_last_temp =
       static_cast<float>(static_cast<i16>(ulp_last_temperature_measurement)) /
       1000.f;
-  if (did_initialize_ulp_riscv && ulp_last_co2 > 0) {
-    Data::the()->update_co2_ppm(ulp_last_co2);
-    Data::the()->update_temperature(ulp_last_temp);
-  }
+  Data::the()->update_co2_ppm(ulp_last_co2);
+  Data::the()->update_temperature(ulp_last_temp);
+}
 
+void recover_from_sleep() {
   switch (esp_sleep_get_wakeup_cause()) {
   case ESP_SLEEP_WAKEUP_ULP: {
     // Scroll to the page showing CO2 PPM. This is very ugly; the 8 is a magic
@@ -365,6 +369,8 @@ extern "C" void app_main() {
           },
   };
   ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_config, &g_i2c_handle));
+
+  load_measurements_from_ulp();
 
   ESP_LOGI("Setup", "Initialize display");
   init_display();
