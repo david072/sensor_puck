@@ -163,11 +163,9 @@ void environment_read_task(void* arg) {
         data->update_temperature(scd_data->temperature);
         data->update_co2_ppm(scd_data->co2);
 
-        if (did_initialize_ulp_riscv) {
-          ulp_last_co2_measurement = scd_data->co2;
-          ulp_last_temperature_measurement =
-              static_cast<u32>(scd_data->temperature * 1000.f);
-        }
+        ulp_last_co2_measurement = scd_data->co2;
+        ulp_last_temperature_measurement =
+            static_cast<u32>(scd_data->temperature * 1000.f);
       } else {
         ESP_LOGW("SCD41", "Failed reading sensor!");
       }
@@ -270,15 +268,7 @@ void enter_deep_sleep() {
     display_enter_sleep_mode();
   }
 
-  if (!did_initialize_ulp_riscv) {
-    ESP_ERROR_CHECK(ulp_riscv_load_binary(
-        ulp_riscv_bin_start, ulp_riscv_bin_end - ulp_riscv_bin_start));
-    ESP_ERROR_CHECK(ulp_set_wakeup_period(0, ULP_RISCV_WAKEUP_PERIOD_US));
-    did_initialize_ulp_riscv = true;
-  }
-
   ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
-
   ulp_timer_resume();
   ESP_ERROR_CHECK(ulp_riscv_run());
 
@@ -330,6 +320,16 @@ void recover_from_sleep() {
   }
 
   deep_sleep_timer = DeepSleepTimer{};
+}
+
+void initialize_ulp_riscv() {
+  if (did_initialize_ulp_riscv)
+    return;
+
+  ESP_ERROR_CHECK(ulp_riscv_load_binary(
+      ulp_riscv_bin_start, ulp_riscv_bin_end - ulp_riscv_bin_start));
+  ESP_ERROR_CHECK(ulp_set_wakeup_period(0, ULP_RISCV_WAKEUP_PERIOD_US));
+  did_initialize_ulp_riscv = true;
 }
 
 /// Taken from
@@ -459,6 +459,8 @@ extern "C" void app_main() {
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
+
+  initialize_ulp_riscv();
 
   ESP_LOGI("Setup", "Setup finished successfully!");
 }
