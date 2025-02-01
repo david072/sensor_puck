@@ -9,57 +9,57 @@
 
 namespace ui {
 
-class SettingsPage : public Page {
+class HomeScreen : public Screen {
 public:
-  class BluetoothOverlay : public Page {
-  public:
-    explicit BluetoothOverlay();
-
-  private:
-    static constexpr u32 BLINK_TIMER_PERIOD_MS = 500;
-
-    void update() override {}
-
-    lv_obj_t* m_container;
-    lv_obj_t* m_bluetooth_label;
-    lv_timer_t* m_blink_timer;
-  };
-
-  explicit SettingsPage();
-  ~SettingsPage();
-
-  static void async_check_checkbox(void* handler_arg, esp_event_base_t, int32_t,
-                                   void*);
-  static void async_uncheck_checkbox(void* handler_arg, esp_event_base_t,
-                                     int32_t, void*);
-
-protected:
-  void update() override {}
+  explicit HomeScreen();
 
 private:
-  static constexpr u32 BLUETOOTH_CHECKBOX_DEBOUNCE_MS = 200;
+  static constexpr u32 UPDATE_INTERVAL_MS = 5 * 1000;
 
-  u32 m_last_bluetooth_toggle = 0;
-  lv_obj_t* m_bluetooth_checkbox;
-  lv_obj_t* m_wifi_checkbox;
+  void update() override;
+
+  lv_obj_t* m_pages_container;
+  lv_obj_t* m_battery_percentage;
 };
+
+// class SettingsPage : public Page {
+// public:
+//   explicit SettingsPage();
+//   ~SettingsPage();
+
+//   static void async_check_checkbox(void* handler_arg, esp_event_base_t,
+//   int32_t,
+//                                    void*);
+//   static void async_uncheck_checkbox(void* handler_arg, esp_event_base_t,
+//                                      int32_t, void*);
+
+// protected:
+//   void update() override {}
+
+// private:
+//   static constexpr u32 BLUETOOTH_CHECKBOX_DEBOUNCE_MS = 200;
+
+//   u32 m_last_bluetooth_toggle = 0;
+//   lv_obj_t* m_bluetooth_checkbox;
+//   lv_obj_t* m_wifi_checkbox;
+// };
 
 class ClockPage : public Page {
 public:
-  class ClockSettingsPage : public Page {
-  public:
-    explicit ClockSettingsPage();
+  // class ClockSettingsPage : public Page {
+  // public:
+  //   explicit ClockSettingsPage();
 
-  protected:
-    void update() override;
+  // protected:
+  //   void update() override;
 
-  private:
-    tm m_time;
+  // private:
+  //   tm m_time;
 
-    lv_obj_t* m_hour_label;
-    lv_obj_t* m_minute_label;
-    lv_obj_t* m_second_label;
-  };
+  //   lv_obj_t* m_hour_label;
+  //   lv_obj_t* m_minute_label;
+  //   lv_obj_t* m_second_label;
+  // };
 
   explicit ClockPage(lv_obj_t* parent);
 
@@ -70,18 +70,14 @@ private:
   static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
 
   lv_obj_t* m_time;
-  lv_obj_t* m_battery_text;
-
-  unsigned long m_press_start = 0;
-  lv_point_t m_press_start_point;
-  bool m_in_fullscreen = false;
+  lv_obj_t* m_date;
 };
 
 class TimerPage : public Page {
 public:
-  class TimerOverlay : public Page {
+  class TimerOverlay : public Overlay {
   public:
-    explicit TimerOverlay();
+    explicit TimerOverlay(lv_obj_t* parent);
 
   protected:
     void update() override;
@@ -90,7 +86,7 @@ public:
     static constexpr uint32_t UPDATE_INTERVAL_MS = 10;
 
     int m_original_timer_duration = 0;
-    bool m_timer_was_running = false;
+    int m_previous_timer_duration = 0;
 
     lv_obj_t* m_arc;
     lv_timer_t* m_blink_timer;
@@ -110,6 +106,8 @@ private:
   static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
 
   void toggle_timer();
+
+  void test(lv_event_t* event);
 
   int m_duration_ms = 0;
   int m_prev_duration_ms = 0;
@@ -133,48 +131,16 @@ protected:
 private:
   static constexpr uint32_t UPDATE_INTERVAL_MS = 2 * 1000;
 
-  lv_obj_t* m_container;
   lv_obj_t* m_co2_ppm;
   lv_obj_t* m_temperature;
-  lv_obj_t* m_warning_circle;
-};
-
-class ExtendedEnvironmentInfoPage : public Page {
-public:
-  explicit ExtendedEnvironmentInfoPage(lv_obj_t* parent);
-
-protected:
-  void update() override;
-
-private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 2 * 1000;
-
   lv_obj_t* m_humidity;
-  lv_obj_t* m_pressure;
 };
 
-class CompassPage : public Page {
-public:
-  explicit CompassPage(lv_obj_t* parent);
-
-protected:
-  void update() override;
-
-private:
-  lv_obj_t* m_cardinal_direction;
-  lv_obj_t* m_angle;
-
-  lv_obj_t* m_north;
-  lv_obj_t* m_south;
-  lv_obj_t* m_east;
-  lv_obj_t* m_west;
-};
-
-class RotaryInputPage : public Page {
+class RotaryInputScreen : public Screen {
 public:
   using UpdateLabelCallback = std::function<void(lv_obj_t*, int)>;
 
-  explicit RotaryInputPage(int& value, float units_per_angle = 1.0 / 10.0);
+  explicit RotaryInputScreen(int& value, float units_per_angle = 1.0 / 10.0);
 
   void set_max(int max) { m_max = max; }
   void set_min(int min) { m_min = min; }

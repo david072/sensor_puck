@@ -15,6 +15,7 @@
 #include <stdio.h>
 #include <sys/lock.h>
 #include <sys/param.h>
+#include <ui/ui.h>
 #include <unistd.h>
 
 constexpr size_t CHSC6X_READ_POINT_LEN = 5;
@@ -46,6 +47,11 @@ void lvgl_tick_cb(void* arg) { lv_tick_inc(LVGL_TICK_PERIOD_MS); }
 void lvgl_port_task(void* arg) {
   constexpr u32 MAX_DELAY_MS = 1000 / CONFIG_FREERTOS_HZ;
 
+  {
+    auto lvgl_guard = Data::the()->lock_lvgl();
+    ui::Ui::the().initialize();
+  }
+
   ESP_LOGI("Display", "Starting LVGL task");
   while (true) {
     u32 time_until_next;
@@ -55,11 +61,13 @@ void lvgl_port_task(void* arg) {
       // make sure to not trigger the watchdog waiting for next execution
       time_until_next = MIN(time_until_next, MAX_DELAY_MS);
 
+#if 0
       if (lv_display_get_inactive_time(NULL) >
           DEEP_SLEEP_DISPLAY_INACTIVITY_MS) {
         esp_event_post(DATA_EVENT_BASE, Data::Event::Inactivity, NULL, 0, 10);
         lv_display_trigger_activity(NULL);
       }
+#endif
     }
 
     usleep(1000 * time_until_next);

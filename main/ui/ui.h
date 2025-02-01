@@ -2,6 +2,7 @@
 
 #include <functional>
 #include <lvgl.h>
+#include <types.h>
 #include <vector>
 
 constexpr lv_color_t make_color(uint8_t r, uint8_t g, uint8_t b) {
@@ -9,6 +10,12 @@ constexpr lv_color_t make_color(uint8_t r, uint8_t g, uint8_t b) {
 }
 
 constexpr lv_color_t make_color(uint8_t v) { return make_color(v, v, v); }
+
+LV_FONT_DECLARE(font_montagu_slab_40);
+LV_FONT_DECLARE(font_montagu_slab_32_bold);
+LV_FONT_DECLARE(font_montagu_slab_24);
+LV_FONT_DECLARE(font_montagu_slab_20);
+LV_FONT_DECLARE(font_montagu_slab_16);
 
 namespace ui {
 
@@ -27,15 +34,13 @@ void on_long_press(lv_obj_t* obj, std::function<void()> callback);
 
 class Page {
 public:
-  explicit Page(lv_obj_t* parent = NULL, uint32_t update_interval = 0);
+  explicit Page(lv_obj_t* parent = NULL, u32 update_interval = 0);
   virtual ~Page();
 
   lv_obj_t* page_container() const { return m_container; }
 
 protected:
   virtual void update() {}
-
-  void make_overlay() const;
 
   bool is_visible() const { return m_visible; }
 
@@ -46,22 +51,53 @@ private:
   bool m_visible;
 };
 
+class Screen : public Page {
+public:
+  explicit Screen(u32 update_interval = 0);
+  virtual ~Screen() {}
+
+protected:
+  virtual void update() override {}
+};
+
+class Overlay : public Page {
+public:
+  explicit Overlay(lv_obj_t* parent, u32 update_interval = 0);
+  virtual ~Overlay() {}
+
+protected:
+  virtual void update() override {}
+};
+
 class Ui {
 public:
   class Style {
   public:
+    struct Colors {
+      lv_color_t background;
+      lv_color_t on_background;
+
+      lv_color_t primary;
+      lv_color_t secondary;
+      lv_color_t caption;
+    };
+
     static constexpr lv_color_t ACCENT_COLOR = make_color(0x62, 0x85, 0xF6);
     static constexpr lv_color_t CAPTION_COLOR = make_color(0x81);
     static constexpr lv_color_t ERROR_COLOR = make_color(0xEB, 0x2D, 0x2D);
 
     lv_style_t const* container() const { return &m_container; }
-    lv_style_t const* page_container() const { return &m_page_container; }
-    lv_style_t const* divider() const { return &m_divider; }
+    lv_style_t const* button() const { return &m_button; }
 
-    lv_style_t const* large_text() const { return &m_large_text; }
-    lv_style_t const* medium_text() const { return &m_medium_text; }
+    lv_style_t const* headline1() const { return &m_headline1; }
+    lv_style_t const* headline2() const { return &m_headline2; }
+    lv_style_t const* headline3() const { return &m_headline3; }
     lv_style_t const* body_text() const { return &m_body_text; }
-    lv_style_t const* caption1() const { return &m_caption1; }
+    lv_style_t const* caption() const { return &m_caption; }
+
+    lv_style_t const* icon() const { return &m_icon; }
+
+    Colors const colors;
 
   private:
     friend class Ui;
@@ -69,13 +105,15 @@ public:
     Style();
 
     lv_style_t m_container;
-    lv_style_t m_page_container;
-    lv_style_t m_divider;
+    lv_style_t m_button;
 
-    lv_style_t m_large_text;
-    lv_style_t m_medium_text;
+    lv_style_t m_headline1;
+    lv_style_t m_headline2;
+    lv_style_t m_headline3;
     lv_style_t m_body_text;
-    lv_style_t m_caption1;
+    lv_style_t m_caption;
+
+    lv_style_t m_icon;
   };
 
   Style const& style() const { return m_style; }
@@ -92,11 +130,11 @@ public:
 
   static Ui& the();
 
-  // TODO: This should not be heap allocated, as it causes a small lag when
-  // entering fullscreen, however I don't know how to do that right now.
-  void enter_fullscreen(lv_obj_t* source, Page* page);
+  void initialize();
+
+  void enter_fullscreen(lv_obj_t* source, Screen* screen);
   void exit_fullscreen();
-  bool in_fullscreen() { return !m_fullscreen_pages.empty(); }
+  bool in_fullscreen() { return !m_sub_screens.empty(); }
 
   void add_overlay(Page* overlay) { m_overlays.push_back(overlay); }
 
@@ -105,13 +143,15 @@ private:
 
   Style m_style;
 
-  struct FullscreenPage {
-    Page* page;
+  Screen* m_home_screen;
+
+  struct SubScreens {
+    Screen* screen;
     /// Used to send enter/exit fullscreen events
     lv_obj_t* source;
   };
 
-  std::vector<FullscreenPage> m_fullscreen_pages{};
+  std::vector<SubScreens> m_sub_screens{};
   lv_event_code_t m_enter_fullscreen_event;
   lv_event_code_t m_exit_fullscreen_event;
   lv_event_code_t m_pop_fullscreen_event;
@@ -120,14 +160,13 @@ private:
 };
 
 lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
-lv_obj_t* large_text(lv_obj_t* parent = nullptr);
-lv_obj_t* body_text(lv_obj_t* parent = nullptr);
-lv_obj_t* caption1(lv_obj_t* parent = nullptr);
-lv_obj_t* divider(lv_obj_t* parent = nullptr);
-lv_obj_t* spacer(lv_obj_t* parent, int width, int height);
-
-lv_obj_t* fullscreen_back_button(lv_obj_t* parent);
 lv_obj_t* text_button(lv_obj_t* parent, char const* text,
                       lv_event_cb_t on_short_click, void* user_data);
+
+lv_obj_t* headline1(lv_obj_t* parent);
+lv_obj_t* headline2(lv_obj_t* parent);
+lv_obj_t* headline3(lv_obj_t* parent);
+lv_obj_t* body_text(lv_obj_t* parent = nullptr);
+lv_obj_t* caption(lv_obj_t* parent);
 
 } // namespace ui

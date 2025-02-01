@@ -1,4 +1,5 @@
 #include "ui.h"
+#include "pages.h"
 #include <util.h>
 
 namespace ui {
@@ -78,57 +79,70 @@ void on_long_press(lv_obj_t* obj, std::function<void()> callback) {
 Ui& Ui::the() {
   static std::optional<Ui> ui;
   if (!ui)
-    ui = Ui();
+    ui.emplace(Ui());
   return *ui;
 }
 
-Ui::Style::Style() {
+Ui::Style::Style()
+    : colors({
+          .background = make_color(0x15),
+          .on_background = make_color(0xF6),
+          .primary = make_color(0xFE, 0x44, 0x95),
+          .secondary = make_color(0x0B, 0x81, 0x89),
+          .caption = make_color(0x6A),
+      }) {
   {
     lv_style_init(&m_container);
     lv_style_set_bg_opa(&m_container, LV_OPA_TRANSP);
-    lv_style_set_text_color(&m_container, lv_color_white());
+    lv_style_set_text_color(&m_container, colors.on_background);
     lv_style_set_border_width(&m_container, 0);
     lv_style_set_pad_all(&m_container, 0);
+    lv_style_set_margin_top(&m_container, 0);
+    lv_style_set_margin_bottom(&m_container, 0);
+    lv_style_set_margin_left(&m_container, 0);
+    lv_style_set_margin_right(&m_container, 0);
     lv_style_set_radius(&m_container, 0);
   }
 
   {
-    lv_style_init(&m_page_container);
-    lv_style_set_bg_color(&m_page_container, lv_color_black());
-    lv_style_set_text_color(&m_page_container, lv_color_white());
-    lv_style_set_border_width(&m_page_container, 0);
-    lv_style_set_pad_all(&m_page_container, 0);
-    lv_style_set_radius(&m_page_container, 0);
+    lv_style_init(&m_button);
+    lv_style_set_bg_color(&m_button, colors.primary);
   }
 
   {
-    lv_style_init(&m_divider);
-    lv_style_set_bg_color(&m_divider, ACCENT_COLOR);
-    lv_style_set_border_width(&m_divider, 0);
+    lv_style_init(&m_headline1);
+    lv_style_set_text_color(&m_headline1, colors.on_background);
+    lv_style_set_text_font(&m_headline1, &font_montagu_slab_40);
   }
 
   {
-    lv_style_init(&m_large_text);
-    lv_style_set_text_color(&m_large_text, lv_color_white());
-    lv_style_set_text_font(&m_large_text, &lv_font_montserrat_40);
+    lv_style_init(&m_headline2);
+    lv_style_set_text_color(&m_headline2, colors.on_background);
+    lv_style_set_text_font(&m_headline2, &font_montagu_slab_32_bold);
   }
 
   {
-    lv_style_init(&m_medium_text);
-    lv_style_set_text_color(&m_medium_text, lv_color_white());
-    lv_style_set_text_font(&m_medium_text, &lv_font_montserrat_26);
-  }
-
-  {
-    lv_style_init(&m_caption1);
-    lv_style_set_text_color(&m_caption1, CAPTION_COLOR);
-    lv_style_set_text_font(&m_caption1, &lv_font_montserrat_18);
+    lv_style_init(&m_headline3);
+    lv_style_set_text_color(&m_headline3, colors.on_background);
+    lv_style_set_text_font(&m_headline3, &font_montagu_slab_24);
   }
 
   {
     lv_style_init(&m_body_text);
-    lv_style_set_text_color(&m_body_text, lv_color_white());
-    lv_style_set_text_font(&m_body_text, &lv_font_montserrat_18);
+    lv_style_set_text_color(&m_body_text, colors.on_background);
+    lv_style_set_text_font(&m_body_text, &font_montagu_slab_20);
+  }
+
+  {
+    lv_style_init(&m_caption);
+    lv_style_set_text_color(&m_caption, colors.caption);
+    lv_style_set_text_font(&m_caption, &font_montagu_slab_16);
+  }
+
+  {
+    lv_style_init(&m_icon);
+    lv_style_set_text_color(&m_icon, colors.on_background);
+    lv_style_set_text_font(&m_icon, &lv_font_montserrat_20);
   }
 }
 
@@ -139,95 +153,44 @@ Ui::Ui()
   m_pop_fullscreen_event = register_lv_event_id();
 }
 
-void Ui::enter_fullscreen(lv_obj_t* source, Page* page) {
+void Ui::initialize() {
+  m_home_screen = new HomeScreen();
+  lv_screen_load(m_home_screen->page_container());
+
+  lv_refr_now(NULL);
+}
+
+void Ui::enter_fullscreen(lv_obj_t* source, Screen* screen) {
   if (!in_fullscreen())
     lv_obj_send_event(source, m_enter_fullscreen_event, NULL);
-  m_fullscreen_pages.push_back({.page = page, .source = source});
+  m_sub_screens.push_back({.screen = screen, .source = source});
+  lv_screen_load(screen->page_container());
 }
 
 void Ui::exit_fullscreen() {
   if (!in_fullscreen())
     return;
 
-  auto page = m_fullscreen_pages.back();
-  if (m_fullscreen_pages.size() == 1)
+  auto page = m_sub_screens.back();
+  if (m_sub_screens.size() == 1)
     lv_obj_send_event(page.source, m_exit_fullscreen_event, NULL);
   lv_obj_send_event(page.source, m_pop_fullscreen_event, NULL);
 
-  delete page.page;
-  m_fullscreen_pages.pop_back();
+  delete page.screen;
+  m_sub_screens.pop_back();
+
+  if (in_fullscreen()) {
+    lv_screen_load(m_sub_screens.end()->screen->page_container());
+  } else {
+    lv_screen_load(m_home_screen->page_container());
+  }
 }
 
-lv_obj_t* flex_container(lv_obj_t* parent) {
-  auto* cont = lv_obj_create(parent);
-  lv_obj_add_style(cont, Ui::the().style().container(), 0);
-  lv_obj_set_size(cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
-  lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
-  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
-  return cont;
-}
-
-lv_obj_t* large_text(lv_obj_t* parent) {
-  auto* text = lv_label_create(parent);
-  lv_obj_add_style(text, Ui::the().style().large_text(), 0);
-  return text;
-}
-
-lv_obj_t* body_text(lv_obj_t* parent) {
-  auto* text = lv_label_create(parent);
-  lv_obj_add_style(text, Ui::the().style().body_text(), 0);
-  return text;
-}
-
-lv_obj_t* caption1(lv_obj_t* parent) {
-  auto* text = lv_label_create(parent);
-  lv_obj_add_style(text, Ui::the().style().caption1(), 0);
-  return text;
-}
-
-lv_obj_t* divider(lv_obj_t* parent) {
-  auto* divider = lv_obj_create(parent);
-  lv_obj_add_style(divider, Ui::the().style().divider(), 0);
-  lv_obj_set_size(divider, 82, 2);
-  return divider;
-}
-
-lv_obj_t* spacer(lv_obj_t* parent, int width, int height) {
-  auto* obj = lv_obj_create(parent);
-  lv_obj_add_style(obj, Ui::the().style().container(), 0);
-  lv_obj_set_size(obj, width, height);
-  return obj;
-}
-
-lv_obj_t* fullscreen_back_button(lv_obj_t* parent) {
-  auto* button = lv_button_create(parent);
-  auto* label = body_text(button);
-  lv_label_set_text(label, LV_SYMBOL_LEFT);
-
-  lv_obj_add_event_cb(
-      button, [](auto) { Ui::the().exit_fullscreen(); }, LV_EVENT_SHORT_CLICKED,
-      NULL);
-
-  return button;
-}
-
-lv_obj_t* text_button(lv_obj_t* parent, char const* text,
-                      lv_event_cb_t on_short_click, void* user_data) {
-  auto* button = lv_button_create(parent);
-  lv_obj_add_event_cb(button, on_short_click, LV_EVENT_SHORT_CLICKED,
-                      user_data);
-  auto* label = body_text(button);
-  lv_label_set_text(label, text);
-  return button;
-}
-
-Page::Page(lv_obj_t* parent, uint32_t update_period) {
-  if (!parent)
-    parent = lv_scr_act();
+Page::Page(lv_obj_t* parent, u32 update_period) {
   m_container = lv_obj_create(parent);
   lv_obj_set_size(m_container, lv_obj_get_width(lv_scr_act()),
                   lv_obj_get_height(lv_scr_act()));
-  lv_obj_add_style(m_container, Ui::the().style().page_container(), 0);
+  lv_obj_add_style(m_container, Ui::the().style().container(), 0);
   lv_obj_add_flag(m_container, LV_OBJ_FLAG_SNAPPABLE);
   lv_obj_add_flag(m_container, LV_OBJ_FLAG_EVENT_BUBBLE);
 
@@ -269,11 +232,68 @@ Page::~Page() {
   lv_timer_delete(m_update_timer);
 }
 
-void Page::make_overlay() const {
-  lv_obj_remove_flag(m_container,
-                     static_cast<lv_obj_flag_t>(LV_OBJ_FLAG_CLICKABLE |
-                                                LV_OBJ_FLAG_CLICK_FOCUSABLE));
-  lv_obj_set_style_bg_opa(m_container, LV_OPA_0, 0);
+Screen::Screen(u32 update_interval)
+    : Page(NULL, update_interval) {
+  lv_obj_set_style_bg_opa(page_container(), LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(page_container(),
+                            Ui::the().style().colors.background, 0);
+}
+
+Overlay::Overlay(lv_obj_t* parent, u32 update_interval)
+    : Page(parent, update_interval) {
+  lv_obj_remove_flag(page_container(), LV_OBJ_FLAG_CLICKABLE);
+  lv_obj_remove_flag(page_container(), LV_OBJ_FLAG_CLICK_FOCUSABLE);
+  lv_obj_set_style_bg_opa(page_container(), LV_OPA_0, 0);
+}
+
+lv_obj_t* flex_container(lv_obj_t* parent) {
+  auto* cont = lv_obj_create(parent);
+  lv_obj_add_style(cont, Ui::the().style().container(), 0);
+  lv_obj_set_size(cont, LV_SIZE_CONTENT, LV_SIZE_CONTENT);
+  lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
+  return cont;
+}
+
+lv_obj_t* text_button(lv_obj_t* parent, char const* text,
+                      lv_event_cb_t on_short_click, void* user_data) {
+  auto* button = lv_button_create(parent);
+  lv_obj_add_style(button, Ui::the().style().button(), 0);
+  lv_obj_add_event_cb(button, on_short_click, LV_EVENT_SHORT_CLICKED,
+                      user_data);
+  auto* label = body_text(button);
+  lv_label_set_text(label, text);
+  return button;
+}
+
+lv_obj_t* headline1(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Ui::the().style().headline1(), 0);
+  return text;
+}
+
+lv_obj_t* headline2(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Ui::the().style().headline2(), 0);
+  return text;
+}
+
+lv_obj_t* headline3(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Ui::the().style().headline3(), 0);
+  return text;
+}
+
+lv_obj_t* body_text(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Ui::the().style().body_text(), 0);
+  return text;
+}
+
+lv_obj_t* caption(lv_obj_t* parent) {
+  auto* text = lv_label_create(parent);
+  lv_obj_add_style(text, Ui::the().style().caption(), 0);
+  return text;
 }
 
 } // namespace ui

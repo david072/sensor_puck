@@ -32,8 +32,6 @@ extern const u8 ulp_riscv_bin_end[] asm("_binary_ulp_riscv_app_bin_end");
 
 constexpr u32 ULP_RISCV_WAKEUP_PERIOD_US = 60 * 1000 * 1000;
 
-constexpr lv_color_t BACKGROUND_COLOR = make_color(0x1a, 0x1a, 0x1a);
-
 constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 ENV_READ_INTERVAL_MS = 10 * 1000;
 
@@ -55,62 +53,6 @@ struct DeepSleepTimer {
 
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
-
-void disable_scroll_on_fullscreen_enter(lv_obj_t* obj) {
-  lv_obj_add_event_cb(
-      obj,
-      [](lv_event_t* event) {
-        lv_obj_set_scroll_dir(
-            static_cast<lv_obj_t*>(lv_event_get_user_data(event)), LV_DIR_NONE);
-      },
-      ui::Ui::the().enter_fullscreen_event(), obj);
-}
-
-void enable_scroll_on_fullscreen_exit(lv_obj_t* obj, lv_dir_t dir) {
-  struct Args {
-    lv_obj_t* target;
-    lv_dir_t dir;
-  };
-
-  lv_obj_add_event_cb(
-      obj,
-      [](lv_event_t* event) {
-        auto* args = static_cast<Args*>(lv_event_get_user_data(event));
-        lv_obj_set_scroll_dir(args->target, args->dir);
-      },
-      ui::Ui::the().exit_fullscreen_event(),
-      new Args{.target = obj, .dir = dir});
-}
-
-lv_obj_t* snapping_flex_container(lv_obj_t* parent = lv_scr_act()) {
-  auto* cont = lv_obj_create(parent);
-  lv_obj_set_layout(cont, LV_LAYOUT_FLEX);
-  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_CENTER,
-                        LV_FLEX_ALIGN_START);
-  lv_obj_set_style_bg_opa(cont, 0, 0);
-  lv_obj_set_style_border_width(cont, 0, 0);
-  lv_obj_set_style_pad_all(cont, 0, 0);
-  lv_obj_set_style_margin_all(cont, 0, 0);
-  lv_obj_set_scrollbar_mode(cont, LV_SCROLLBAR_MODE_OFF);
-  lv_obj_add_flag(cont, LV_OBJ_FLAG_SCROLL_ONE);
-  lv_obj_set_size(cont, lv_obj_get_width(lv_scr_act()),
-                  lv_obj_get_height(lv_scr_act()));
-  return cont;
-}
-
-template <typename... Page>
-void add_grouped_pages() {
-  auto* container = snapping_flex_container(g_ui_container);
-  lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
-  lv_obj_set_scroll_dir(container, LV_DIR_HOR);
-  lv_obj_set_scroll_snap_x(container, LV_SCROLL_SNAP_START);
-  lv_obj_add_flag(container, LV_OBJ_FLAG_EVENT_BUBBLE);
-
-  disable_scroll_on_fullscreen_enter(container);
-  enable_scroll_on_fullscreen_exit(container, LV_DIR_HOR);
-
-  ([&] { g_pages.push_back(new Page(container)); }(), ...);
-}
 
 void environment_read_task(void* arg) {
   struct Sensors {
@@ -374,32 +316,6 @@ extern "C" void app_main() {
 
   ESP_LOGI("Setup", "Initialize display");
   init_display();
-
-  {
-    auto lvgl_guard = Data::the()->lock_lvgl();
-    lv_obj_set_style_bg_color(lv_scr_act(), BACKGROUND_COLOR, 0);
-    lv_obj_set_style_text_color(lv_scr_act(), lv_color_white(), 0);
-    lv_obj_set_style_border_width(lv_scr_act(), 0, 0);
-    lv_obj_set_scroll_dir(lv_scr_act(), LV_DIR_NONE);
-    lv_obj_set_style_pad_all(lv_scr_act(), 0, 0);
-
-    g_ui_container = snapping_flex_container();
-    lv_obj_set_flex_flow(g_ui_container, LV_FLEX_FLOW_COLUMN);
-    lv_obj_set_scroll_dir(g_ui_container, LV_DIR_VER);
-    lv_obj_set_scroll_snap_y(g_ui_container, LV_SCROLL_SNAP_START);
-
-    disable_scroll_on_fullscreen_enter(g_ui_container);
-    enable_scroll_on_fullscreen_exit(g_ui_container, LV_DIR_VER);
-
-    add_grouped_pages<ui::ClockPage, ui::TimerPage>();
-    add_grouped_pages<ui::AirQualityPage, ui::ExtendedEnvironmentInfoPage>();
-    // add_grouped_pages<ui::CompassPage>();
-
-    ui::Ui::the().add_overlay(new ui::TimerPage::TimerOverlay());
-    ui::Ui::the().add_overlay(new ui::SettingsPage::BluetoothOverlay());
-
-    lv_refr_now(NULL);
-  }
 
   recover_from_sleep();
 
