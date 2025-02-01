@@ -80,11 +80,10 @@ public:
       lv_color_t primary;
       lv_color_t secondary;
       lv_color_t caption;
-    };
 
-    static constexpr lv_color_t ACCENT_COLOR = make_color(0x62, 0x85, 0xF6);
-    static constexpr lv_color_t CAPTION_COLOR = make_color(0x81);
-    static constexpr lv_color_t ERROR_COLOR = make_color(0xEB, 0x2D, 0x2D);
+      lv_color_t warning;
+      lv_color_t error;
+    };
 
     lv_style_t const* container() const { return &m_container; }
     lv_style_t const* button() const { return &m_button; }

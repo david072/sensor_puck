@@ -90,6 +90,8 @@ Ui::Style::Style()
           .primary = make_color(0xFE, 0x44, 0x95),
           .secondary = make_color(0x0B, 0x81, 0x89),
           .caption = make_color(0x6A),
+          .warning = make_color(0xFF, 0xC8, 0x21),
+          .error = make_color(0xFF, 0x0C, 0x41),
       }) {
   {
     lv_style_init(&m_container);

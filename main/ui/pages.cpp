@@ -581,13 +581,15 @@ void AirQualityPage::update() {
   lv_label_set_text_fmt(m_temperature, "%.1f", data->temperature());
   lv_label_set_text_fmt(m_humidity, "%.1f", data->humidity());
 
-  // if (co2_ppm >= BAD_CO2_PPM_LEVEL) {
-  //   lv_obj_remove_flag(m_warning_circle, LV_OBJ_FLAG_HIDDEN);
-  //   lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().ERROR_COLOR, 0);
-  // } else {
-  //   lv_obj_add_flag(m_warning_circle, LV_OBJ_FLAG_HIDDEN);
-  //   lv_obj_set_style_text_color(m_co2_ppm, lv_color_white(), 0);
-  // }
+  if (data->co2_ppm() >= MEDIOCRE_CO2_PPM_LEVEL) {
+    lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.warning, 0);
+    if (data->co2_ppm() >= BAD_CO2_PPM_LEVEL) {
+      lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.error, 0);
+    }
+  } else {
+    lv_obj_set_style_text_color(m_co2_ppm,
+                                Ui::the().style().colors.on_background, 0);
+  }
 }
 
 RotaryInputScreen::RotaryInputScreen(int& value, float units_per_angle)

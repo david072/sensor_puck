@@ -6,6 +6,10 @@
 
 static constexpr u32 DEEP_SLEEP_DISPLAY_INACTIVITY_MS = 60 * 1000;
 
+// From a publication of the Umweltbundesamt on indoor CO2 levels (p. 1368,
+// table 4)
+// https://www.umweltbundesamt.de/sites/default/files/medien/pdfs/kohlendioxid_2008.pdf
+static constexpr u32 MEDIOCRE_CO2_PPM_LEVEL = 1000;
 static constexpr u32 BAD_CO2_PPM_LEVEL = 2000;
 
 // SeeedStudio display schematic:
