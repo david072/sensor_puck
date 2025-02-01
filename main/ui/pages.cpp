@@ -560,7 +560,7 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
       lv_label_set_text(m_temperature, "---");
 
       auto* temp_unit = caption(temp_container);
-      lv_label_set_text(temp_unit, "dC");
+      lv_label_set_text(temp_unit, "°C");
     }
 
     // Humidity
