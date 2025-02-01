@@ -33,7 +33,7 @@ extern const u8 ulp_riscv_bin_end[] asm("_binary_ulp_riscv_app_bin_end");
 constexpr u32 ULP_RISCV_WAKEUP_PERIOD_US = 60 * 1000 * 1000;
 
 constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
-constexpr u32 ENV_READ_INTERVAL_MS = 10 * 1000;
+constexpr u32 ENV_READ_INTERVAL_MS = 5 * 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
@@ -95,7 +95,7 @@ void environment_read_task(void* arg) {
 
       if (bme_data) {
         // data->update_temperature(bme_data->temperature);
-        data->update_humidity(bme_data->humidity);
+        // data->update_humidity(bme_data->humidity);
         data->update_pressure(bme_data->pressure);
       } else {
         ESP_LOGW("BME688", "Failed reading sensor!");
@@ -103,6 +103,7 @@ void environment_read_task(void* arg) {
 
       if (scd_data) {
         data->update_temperature(scd_data->temperature);
+        data->update_humidity(scd_data->humidity);
         data->update_co2_ppm(scd_data->co2);
 
         ulp_last_co2_measurement = scd_data->co2;
