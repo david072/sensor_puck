@@ -18,6 +18,8 @@
 #include <ui/ui.h>
 #include <unistd.h>
 
+#define SLEEP_ON_DISPLAY_INACTIVITY true
+
 constexpr size_t CHSC6X_READ_POINT_LEN = 5;
 constexpr u32 CHSC6X_I2C_SPEED = 100000;
 constexpr u32 CHSC6X_I2C_TIMEOUT_MS = 50;
@@ -61,7 +63,7 @@ void lvgl_port_task(void* arg) {
       // make sure to not trigger the watchdog waiting for next execution
       time_until_next = MIN(time_until_next, MAX_DELAY_MS);
 
-#if 0
+#if SLEEP_ON_DISPLAY_INACTIVITY
       if (lv_display_get_inactive_time(NULL) >
           DEEP_SLEEP_DISPLAY_INACTIVITY_MS) {
         esp_event_post(DATA_EVENT_BASE, Data::Event::Inactivity, NULL, 0, 10);

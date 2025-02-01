@@ -61,11 +61,64 @@ HomeScreen::HomeScreen()
 
   // overlays
   { new TimerPage::TimerOverlay(page_container()); }
+
+  // page indicator
+  {
+    float total_angle = PAGE_INDICATOR_GAP_ANGLE * (PAGE_COUNT - 1);
+    float pos_delta =
+        120 - PAGE_INDICATOR_DIAMETER / 2.f - PAGE_INDICATOR_EDGE_PADDING;
+
+    float middle_angle = 270 * DEG_TO_RAD;
+    for (size_t i = 0; i < PAGE_COUNT; ++i) {
+      float angle =
+          middle_angle - total_angle / 2.f + PAGE_INDICATOR_GAP_ANGLE * i;
+      auto x = cos(angle) * pos_delta;
+      auto y = -sin(angle) * pos_delta;
+
+      auto* circle = lv_obj_create(page_container());
+      lv_obj_add_style(circle, Ui::the().style().container(), 0);
+      lv_obj_set_style_radius(circle, LV_RADIUS_CIRCLE, 0);
+      lv_obj_set_style_bg_opa(circle, LV_OPA_100, 0);
+      lv_obj_set_style_bg_color(circle, Ui::the().style().colors.caption, 0);
+      lv_obj_set_style_bg_color(circle, Ui::the().style().colors.on_background,
+                                LV_STATE_CHECKED);
+      lv_obj_set_size(circle, PAGE_INDICATOR_DIAMETER, PAGE_INDICATOR_DIAMETER);
+      lv_obj_set_style_transform_pivot_x(circle, LV_PCT(50), 0);
+      lv_obj_set_style_transform_pivot_y(circle, LV_PCT(50), 0);
+      lv_obj_add_flag(circle, LV_OBJ_FLAG_FLOATING);
+      lv_obj_align(circle, LV_ALIGN_CENTER, x, y);
+
+      m_page_indicators[i] = circle;
+    }
+
+    lv_obj_add_event_cb(
+        m_pages_container,
+        [](lv_event_t* event) {
+          static_cast<HomeScreen*>(lv_event_get_user_data(event))
+              ->on_pages_container_scroll();
+        },
+        LV_EVENT_SCROLL_END, this);
+
+    on_pages_container_scroll();
+  }
 }
 
 void HomeScreen::update() {
   lv_label_set_text_fmt(m_battery_percentage, "%d%%",
                         Data::the()->battery_percentage());
+}
+
+void HomeScreen::on_pages_container_scroll() {
+  // for some reason, this is in multiples of 248 (i.e. 1st page: 0, 2nd: 248,
+  // 3rd: 496, etc.)
+  auto offset = lv_obj_get_scroll_x(m_pages_container);
+  auto visible_page = offset / 248;
+
+  for (size_t i = 0; i < PAGE_COUNT; ++i) {
+    lv_obj_remove_state(m_page_indicators[i], LV_STATE_CHECKED);
+  }
+
+  lv_obj_add_state(m_page_indicators[visible_page], LV_STATE_CHECKED);
 }
 
 // SettingsPage::SettingsPage()

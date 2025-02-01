@@ -6,6 +6,7 @@
 #include <lvgl.h>
 #include <optional>
 #include <types.h>
+#include <util.h>
 
 namespace ui {
 
@@ -15,11 +16,20 @@ public:
 
 private:
   static constexpr u32 UPDATE_INTERVAL_MS = 5 * 1000;
+  static constexpr size_t PAGE_COUNT = 3;
+
+  static constexpr float PAGE_INDICATOR_GAP_ANGLE = 6 * DEG_TO_RAD;
+  static constexpr u32 PAGE_INDICATOR_DIAMETER = 6;
+  static constexpr u32 PAGE_INDICATOR_EDGE_PADDING = 10;
 
   void update() override;
 
+  void on_pages_container_scroll();
+
   lv_obj_t* m_pages_container;
   lv_obj_t* m_battery_percentage;
+
+  lv_obj_t* m_page_indicators[PAGE_COUNT] = {};
 };
 
 // class SettingsPage : public Page {
