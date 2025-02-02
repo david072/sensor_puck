@@ -69,6 +69,11 @@ int main(void) {
     sensirion_i2c_hal_free();
     ulp_riscv_lock_release(&lock);
 
+    if (last_co2_measurement >= wake_threshold_ppm) {
+      ulp_riscv_wakeup_main_processor();
+      break;
+    }
+
     // wait 10ms to give the main CPU time to take the lock if woken up by the
     // user
     ulp_riscv_delay_cycles(ULP_RISCV_CYCLES_PER_US * 10000);
