@@ -107,8 +107,10 @@ void environment_read_task(void* arg) {
         data->update_co2_ppm(scd_data->co2);
 
         ulp_last_co2_measurement = scd_data->co2;
-        ulp_last_temperature_measurement =
-            static_cast<u32>(scd_data->temperature * 1000.f);
+        ulp_last_temperature_measurement = std::bit_cast<u32>(
+            static_cast<i32>(scd_data->temperature * 1000.f));
+        ulp_last_humidity_measurement =
+            std::bit_cast<u32>(static_cast<i32>(scd_data->humidity * 1000.f));
       } else {
         ESP_LOGW("SCD41", "Failed reading sensor!");
       }
@@ -228,10 +230,14 @@ void load_measurements_from_ulp() {
 
   auto ulp_last_co2 = static_cast<u16>(ulp_last_co2_measurement);
   auto ulp_last_temp =
-      static_cast<float>(static_cast<i16>(ulp_last_temperature_measurement)) /
+      static_cast<float>(std::bit_cast<i32>(ulp_last_temperature_measurement)) /
+      1000.f;
+  auto ulp_last_hum =
+      static_cast<float>(std::bit_cast<i32>(ulp_last_humidity_measurement)) /
       1000.f;
   Data::the()->update_co2_ppm(ulp_last_co2);
   Data::the()->update_temperature(ulp_last_temp);
+  Data::the()->update_humidity(ulp_last_hum);
 }
 
 void recover_from_sleep() {

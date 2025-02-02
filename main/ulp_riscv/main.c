@@ -11,11 +11,13 @@ volatile ulp_riscv_lock_t lock;
 
 volatile uint32_t last_co2_measurement = 0;
 volatile uint32_t last_temperature_measurement = 0;
+volatile uint32_t last_humidity_measurement = 0;
 volatile uint32_t wake_threshold_ppm = 0;
 
 typedef struct {
   uint16_t co2;
   int32_t temp;
+  int32_t hum;
 } Data;
 
 Data scd41_measure_single_shot(void) {
@@ -36,6 +38,7 @@ Data scd41_measure_single_shot(void) {
   return (Data){
       .co2 = co2,
       .temp = temp,
+      .hum = rh,
   };
 }
 
@@ -56,13 +59,11 @@ int main(void) {
     Data result = scd41_measure_single_shot();
     data_sum.co2 += result.co2;
     data_sum.temp += result.temp;
+    data_sum.hum += result.hum;
 
     last_co2_measurement = data_sum.co2 / (i + 1);
     last_temperature_measurement = data_sum.temp / (i + 1);
-
-    if (last_co2_measurement >= wake_threshold_ppm) {
-      ulp_riscv_wakeup_main_processor();
-    }
+    last_humidity_measurement = data_sum.hum / (i + 1);
 
     scd4x_power_down();
     sensirion_i2c_hal_free();
