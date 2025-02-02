@@ -404,7 +404,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);
         if (p->m_prev_duration_ms != p->m_duration_ms) {
-          Data::the()->delete_timer();
+          Data::the()->user_timer().reset();
         }
       },
       Ui::the().pop_fullscreen_event(), this);
@@ -432,7 +432,7 @@ TimerPage::TimerPage(lv_obj_t* parent)
       controls_container, LV_SYMBOL_REFRESH,
       [](lv_event_t* event) {
         auto* p = get_event_user_data<TimerPage>(event);
-        Data::the()->delete_timer();
+        Data::the()->user_timer().reset();
         p->m_duration_ms = 0;
       },
       this);
@@ -470,13 +470,13 @@ void TimerPage::toggle_timer() {
     return;
 
   auto d = Data::the();
-  if (d->is_timer_running()) {
-    d->stop_timer();
+  if (d->user_timer().is_running()) {
+    d->user_timer().stop();
   } else {
     if (m_duration_ms != m_prev_duration_ms) {
-      d->start_timer(m_duration_ms);
+      d->user_timer().start(m_duration_ms);
     } else {
-      d->resume_timer();
+      d->user_timer().resume();
     }
   }
 }
@@ -484,14 +484,15 @@ void TimerPage::toggle_timer() {
 void TimerPage::update() {
   auto d = Data::the();
 
-  if (d->is_timer_running()) {
-    m_duration_ms = d->remaining_timer_duration_ms();
+  if (d->user_timer().is_running()) {
+    m_duration_ms = d->user_timer().remaining_duration_ms();
     m_prev_duration_ms = m_duration_ms;
     lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PAUSE);
   } else {
     lv_label_set_text(m_play_pause_button_label, LV_SYMBOL_PLAY);
   }
-  lv_obj_set_state(m_edit_button, LV_STATE_DISABLED, d->is_timer_running());
+  lv_obj_set_state(m_edit_button, LV_STATE_DISABLED,
+                   d->user_timer().is_running());
   lv_obj_set_state(m_play_pause_button, LV_STATE_DISABLED, m_duration_ms == 0);
 
   format_label_with_minutes_and_seconds(m_time_label, m_duration_ms);
@@ -548,21 +549,21 @@ TimerPage::TimerOverlay::TimerOverlay(lv_obj_t* parent)
 
 void TimerPage::TimerOverlay::update() {
   auto d = Data::the();
-  if (d->is_timer_running() && m_original_timer_duration != 0) {
-    auto remaining = d->remaining_timer_duration_ms();
+  if (d->user_timer().is_running() && m_original_timer_duration != 0) {
+    auto remaining = d->user_timer().remaining_duration_ms();
     lv_arc_set_value(m_arc, 100 * remaining / m_original_timer_duration);
     lv_obj_remove_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
   } else {
     // only hide the arc once, to allow e.g. blinking of the arc to indicate the
     // timer having expired
-    if (d->remaining_timer_duration_ms() == 0 &&
+    if (d->user_timer().remaining_duration_ms() == 0 &&
         m_previous_timer_duration != 0) {
       lv_arc_set_value(m_arc, 100);
       lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
     }
   }
 
-  m_previous_timer_duration = d->remaining_timer_duration_ms();
+  m_previous_timer_duration = d->user_timer().remaining_duration_ms();
 }
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)

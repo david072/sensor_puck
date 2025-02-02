@@ -12,6 +12,24 @@
 #include <types.h>
 #include <util.h>
 
+class UserTimer {
+public:
+  void recover(int original_duration, int remaining_duration);
+
+  void start(int duration);
+  void resume() const;
+  void stop() const;
+  void reset();
+
+  int remaining_duration_ms() const;
+  int original_duration_ms() const { return m_original_duration; }
+  bool is_running() const;
+
+private:
+  TimerHandle_t m_timer{};
+  int m_original_duration = 0;
+};
+
 void initialize_nvs_flash();
 
 /// Apply voltage transformation of the voltage divider on the battery read
@@ -107,15 +125,7 @@ public:
   static void disable_wifi();
   static bool wifi_enabled();
 
-  void recover_timer(int original_duration, int remaining_duration);
-  void start_timer(int duration);
-  void stop_timer() const;
-  void resume_timer() const;
-  void delete_timer();
-  int remaining_timer_duration_ms() const;
-  int original_timer_duration_ms() const { return m_original_timer_duration; }
-  bool is_timer_running() const;
-  bool timer_exists() const { return m_current_timer != NULL; }
+  UserTimer& user_timer() { return m_user_timer; }
 
   uint8_t battery_percentage() const { return m_battery_percentage; }
 
@@ -136,8 +146,7 @@ private:
 
   Lock m_lvgl_lock;
 
-  TimerHandle_t m_current_timer{};
-  int m_original_timer_duration = 0;
+  UserTimer m_user_timer;
 
   uint8_t m_battery_percentage;
 

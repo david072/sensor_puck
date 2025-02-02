@@ -193,14 +193,15 @@ void enter_deep_sleep() {
     auto d = Data::the();
 
     // save timer state
-    if (d->remaining_timer_duration_ms() > 0) {
+    if (d->user_timer().remaining_duration_ms() > 0) {
       deep_sleep_timer.sleep_start = time(NULL) * 1000;
       deep_sleep_timer.original_timer_duration =
-          d->original_timer_duration_ms();
+          d->user_timer().original_duration_ms();
       deep_sleep_timer.remaining_timer_duration =
-          d->remaining_timer_duration_ms();
+          d->user_timer().remaining_duration_ms();
       esp_sleep_enable_timer_wakeup(
-          static_cast<uint64_t>(d->remaining_timer_duration_ms()) * 1000);
+          static_cast<uint64_t>(d->user_timer().remaining_duration_ms()) *
+          1000);
     } else {
       deep_sleep_timer = DeepSleepTimer{};
     }
@@ -247,7 +248,8 @@ void recover_from_sleep() {
   }
   case ESP_SLEEP_WAKEUP_TIMER: {
     ESP_LOGI("Setup", "Woken up by timer");
-    Data::the()->recover_timer(deep_sleep_timer.original_timer_duration, 0);
+    Data::the()->user_timer().recover(deep_sleep_timer.original_timer_duration,
+                                      0);
     break;
   }
   default:
@@ -257,8 +259,8 @@ void recover_from_sleep() {
     auto now = time(NULL) * 1000;
     auto remaining_duration = deep_sleep_timer.remaining_timer_duration -
                               (now - deep_sleep_timer.sleep_start);
-    Data::the()->recover_timer(deep_sleep_timer.original_timer_duration,
-                               remaining_duration);
+    Data::the()->user_timer().recover(deep_sleep_timer.original_timer_duration,
+                                      remaining_duration);
     break;
   }
 

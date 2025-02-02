@@ -9,6 +9,85 @@
 #include <ble_peripheral_manager.h>
 #include <wifi_manager.h>
 
+void UserTimer::recover(int original_duration, int remaining_duration) {
+  if (remaining_duration == 0) {
+    if (m_timer) {
+      xTimerDelete(m_timer, portMAX_DELAY);
+      m_timer = NULL;
+    }
+
+    esp_event_post(DATA_EVENT_BASE, Data::Event::UserTimerExpired, NULL, 0,
+                   portMAX_DELAY);
+    return;
+  }
+
+  start(original_duration);
+  xTimerChangePeriod(m_timer, pdMS_TO_TICKS(remaining_duration), portMAX_DELAY);
+}
+
+void UserTimer::start(int duration) {
+  if (!m_timer) {
+    m_timer =
+        xTimerCreate("User Timer", 1, false, NULL, [](TimerHandle_t timer) {
+          xTimerDelete(timer, 10);
+          esp_event_post(DATA_EVENT_BASE, Data::Event::UserTimerExpired, NULL,
+                         0, 10);
+
+          // make sure to not block timer callback on Data mutex acquisition
+          xTaskCreate(
+              [](void*) {
+                Data::the()->user_timer().reset();
+                vTaskDelete(NULL);
+              },
+              "tmr cleanup", 2048, NULL, 10, NULL);
+        });
+  }
+
+  xTimerStop(m_timer, portMAX_DELAY);
+  xTimerChangePeriod(m_timer, pdMS_TO_TICKS(duration), portMAX_DELAY);
+  esp_event_post(DATA_EVENT_BASE, Data::Event::UserTimerStarted, &duration,
+                 sizeof(duration), portMAX_DELAY);
+
+  m_original_duration = duration;
+}
+
+void UserTimer::resume() const {
+  if (!m_timer)
+    return;
+  if (is_running())
+    return;
+  xTimerStart(m_timer, portMAX_DELAY);
+}
+
+void UserTimer::stop() const {
+  if (!m_timer)
+    return;
+  auto remaining_time = remaining_duration_ms();
+  xTimerChangePeriod(m_timer, pdMS_TO_TICKS(remaining_time), portMAX_DELAY);
+  xTimerStop(m_timer, portMAX_DELAY);
+}
+
+void UserTimer::reset() {
+  if (!m_timer)
+    return;
+  xTimerDelete(m_timer, portMAX_DELAY);
+  m_timer = NULL;
+}
+
+int UserTimer::remaining_duration_ms() const {
+  if (!m_timer)
+    return 0;
+
+  auto remaining_ticks = xTimerGetExpiryTime(m_timer) - xTaskGetTickCount();
+  return pdTICKS_TO_MS(remaining_ticks);
+}
+
+bool UserTimer::is_running() const {
+  if (!m_timer)
+    return false;
+  return xTimerIsTimerActive(m_timer);
+}
+
 void initialize_nvs_flash() {
   ESP_LOGI("Data", "Initializing NVS Flash");
   auto ret = nvs_flash_init();
@@ -43,87 +122,6 @@ bool Data::bluetooth_enabled() { return BlePeripheralManager::the().started(); }
 void Data::enable_wifi() { WifiManager::the().enable_wifi(); }
 void Data::disable_wifi() { WifiManager::the().disable_wifi(); }
 bool Data::wifi_enabled() { return WifiManager::the().wifi_enabled(); }
-
-void Data::recover_timer(int original_duration, int remaining_duration) {
-  if (remaining_duration == 0) {
-    if (m_current_timer) {
-      xTimerDelete(m_current_timer, portMAX_DELAY);
-      m_current_timer = NULL;
-    }
-
-    esp_event_post(DATA_EVENT_BASE, Event::UserTimerExpired, NULL, 0,
-                   portMAX_DELAY);
-    return;
-  }
-
-  start_timer(original_duration);
-  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(remaining_duration),
-                     portMAX_DELAY);
-}
-
-void Data::start_timer(int duration) {
-  if (!m_current_timer) {
-    m_current_timer =
-        xTimerCreate("User Timer", 1, false, NULL, [](TimerHandle_t timer) {
-          xTimerDelete(timer, 10);
-          esp_event_post(DATA_EVENT_BASE, Event::UserTimerExpired, NULL, 0, 10);
-
-          // make sure to not block timer callback on Data mutex acquisition
-          xTaskCreate(
-              [](void*) {
-                Data::the()->m_current_timer = NULL;
-                vTaskDelete(NULL);
-              },
-              "tmr cleanup", 2048, NULL, 10, NULL);
-        });
-  }
-
-  xTimerStop(m_current_timer, portMAX_DELAY);
-  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(duration), portMAX_DELAY);
-  esp_event_post(DATA_EVENT_BASE, Event::UserTimerStarted, &duration,
-                 sizeof(duration), portMAX_DELAY);
-
-  m_original_timer_duration = duration;
-}
-
-void Data::stop_timer() const {
-  if (!m_current_timer)
-    return;
-  auto remaining_time = remaining_timer_duration_ms();
-  xTimerChangePeriod(m_current_timer, pdMS_TO_TICKS(remaining_time),
-                     portMAX_DELAY);
-  xTimerStop(m_current_timer, portMAX_DELAY);
-}
-
-void Data::resume_timer() const {
-  if (!m_current_timer)
-    return;
-  if (is_timer_running())
-    return;
-  xTimerStart(m_current_timer, portMAX_DELAY);
-}
-
-void Data::delete_timer() {
-  if (!m_current_timer)
-    return;
-  xTimerDelete(m_current_timer, portMAX_DELAY);
-  m_current_timer = NULL;
-}
-
-int Data::remaining_timer_duration_ms() const {
-  if (!m_current_timer)
-    return 0;
-
-  auto remaining_ticks =
-      xTimerGetExpiryTime(m_current_timer) - xTaskGetTickCount();
-  return pdTICKS_TO_MS(remaining_ticks);
-}
-
-bool Data::is_timer_running() const {
-  if (!m_current_timer)
-    return false;
-  return xTimerIsTimerActive(m_current_timer);
-}
 
 void Data::update_battery_voltage(uint32_t voltage) {
   m_battery_percentage =
