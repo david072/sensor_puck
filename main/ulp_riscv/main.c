@@ -43,10 +43,7 @@ Data scd41_measure_single_shot(void) {
 }
 
 int main(void) {
-  // make sure the variable doesn't get optimized out or something
-  wake_threshold_ppm;
-
-  Data data_sum = {.co2 = 0, .temp = 0};
+  Data data_sum = {.co2 = 0, .temp = 0, .hum = 0};
   for (int i = 0; i < SCD_SAMPLES; ++i) {
     ulp_riscv_lock_acquire(&lock);
 

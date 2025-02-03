@@ -18,8 +18,6 @@
 #include <ui/ui.h>
 #include <unistd.h>
 
-#define SLEEP_ON_DISPLAY_INACTIVITY true
-
 constexpr size_t CHSC6X_READ_POINT_LEN = 5;
 constexpr u32 CHSC6X_I2C_SPEED = 100000;
 constexpr u32 CHSC6X_I2C_TIMEOUT_MS = 50;

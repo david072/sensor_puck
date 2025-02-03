@@ -5,6 +5,8 @@
 #include <driver/spi_master.h>
 #include <esp_lcd_panel_io.h>
 
+#define SLEEP_ON_DISPLAY_INACTIVITY true
+
 constexpr spi_host_device_t DP_HOST = SPI2_HOST;
 constexpr u32 LVGL_TICK_PERIOD_MS = 2;
 

@@ -42,9 +42,6 @@ i2c_master_bus_handle_t g_i2c_handle;
 
 Bm8563* g_rtc;
 
-std::vector<ui::Page*> g_pages = {};
-lv_obj_t* g_ui_container;
-
 struct DeepSleepTimer {
   long sleep_start = 0;
   int original_timer_duration = 0;
@@ -55,43 +52,28 @@ RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 
 void environment_read_task(void* arg) {
-  struct Sensors {
-    Bme688 bme;
-    Scd41 scd;
-    Battery battery;
-  };
+  Bme688 bme(g_i2c_handle);
+  bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
+  bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
+  bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
+  bme.set_iir_filter_size(Bme688::FilterSize::Size3);
 
-  auto init = []() {
-    Bme688 bme(g_i2c_handle);
-    bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
-    bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
-    bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
-    bme.set_iir_filter_size(Bme688::FilterSize::Size3);
-
-    Scd41 scd(g_i2c_handle);
+  Scd41 scd(g_i2c_handle);
 #if SCD_LOW_POWER
-    scd.start_low_power_periodic_measurement();
+  scd.start_low_power_periodic_measurement();
 #else
-    scd.start_periodic_measurement();
+  scd.start_periodic_measurement();
 #endif
 
-    Battery bat(BATTERY_READ_PIN);
+  Battery battery(BATTERY_READ_PIN);
 
-    ESP_LOGI("ENV", "Sensors initialized");
-    return Sensors{
-        .bme = bme,
-        .scd = scd,
-        .battery = bat,
-    };
-  };
-
-  auto sensors = init();
+  ESP_LOGI("ENV", "Sensors initialized");
 
   while (true) {
     {
       auto data = Data::the();
-      auto bme_data = sensors.bme.read_sensor();
-      auto scd_data = sensors.scd.read();
+      auto bme_data = bme.read_sensor();
+      auto scd_data = scd.read();
 
       if (bme_data) {
         // data->update_temperature(bme_data->temperature);
@@ -115,7 +97,7 @@ void environment_read_task(void* arg) {
         ESP_LOGW("SCD41", "Failed reading sensor!");
       }
 
-      data->update_battery_voltage(sensors.battery.read_voltage());
+      data->update_battery_voltage(battery.read_voltage());
     }
 
     vTaskDelay(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS));
@@ -123,12 +105,7 @@ void environment_read_task(void* arg) {
 }
 
 void lsm_read_task(void* arg) {
-  auto init_lsm = []() {
-    Lsm6dsox lsm(g_i2c_handle);
-    return lsm;
-  };
-
-  auto lsm = init_lsm();
+  Lsm6dsox lsm(g_i2c_handle);
 
   while (true) {
     {
@@ -208,7 +185,6 @@ void enter_deep_sleep() {
       deep_sleep_timer = DeepSleepTimer{};
     }
 
-    auto lvgl_guard = d->lock_lvgl();
     set_display_backlight(false);
     clear_display();
     display_enter_sleep_mode();
@@ -242,23 +218,13 @@ void load_measurements_from_ulp() {
 
 void recover_from_sleep() {
   switch (esp_sleep_get_wakeup_cause()) {
-  case ESP_SLEEP_WAKEUP_ULP: {
-    // Scroll to the page showing CO2 PPM. This is very ugly; the 8 is a magic
-    // number for the padding between the pages in the scroll view (idk if its
-    // correct though).
-    lv_obj_scroll_to_y(g_ui_container, lv_obj_get_height(lv_scr_act()) + 8,
-                       LV_ANIM_ON);
-    auto* scroll_container = lv_obj_get_child(g_ui_container, 1);
-    lv_obj_scroll_to_x(scroll_container, 0, LV_ANIM_ON);
-    break;
-  }
   case ESP_SLEEP_WAKEUP_TIMER: {
     ESP_LOGI("Setup", "Woken up by timer");
     Data::the()->user_timer().recover(deep_sleep_timer.original_timer_duration,
                                       0);
     break;
   }
-  default:
+  default: {
     if (deep_sleep_timer.sleep_start == 0)
       break;
 
@@ -268,6 +234,7 @@ void recover_from_sleep() {
     Data::the()->user_timer().recover(deep_sleep_timer.original_timer_duration,
                                       remaining_duration);
     break;
+  }
   }
 
   deep_sleep_timer = DeepSleepTimer{};

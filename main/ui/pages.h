@@ -117,8 +117,6 @@ private:
 
   void toggle_timer();
 
-  void test(lv_event_t* event);
-
   int m_duration_ms = 0;
   int m_prev_duration_ms = 0;
   bool m_duration_changed = false;

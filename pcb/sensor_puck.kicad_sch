@@ -6305,6 +6305,10 @@
 		(uuid "98893f8f-168b-4eec-a016-80cac1ec47fc")
 	)
 	(no_connect
+		(at 146.05 129.54)
+		(uuid "a2257459-4a8a-4914-ac29-57f2c549d149")
+	)
+	(no_connect
 		(at 208.28 49.53)
 		(uuid "ab4c4c1d-908d-472d-ac16-45059558df03")
 	)
@@ -8017,16 +8021,6 @@
 		)
 		(uuid "cbb54978-913c-41c3-8fa5-75c43541a0fa")
 	)
-	(text "Use NFC EH for\ncharging but don't\naffect VBUS\npotential\n(USB problems)."
-		(exclude_from_sim no)
-		(at 156.718 39.624 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "cbd36097-8878-4c71-b71d-43191680abe9")
-	)
 	(text "IO1&2 go to RTC I2C"
 		(exclude_from_sim no)
 		(at 72.644 49.784 0)
@@ -8214,28 +8208,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "NFC_EH"
-		(shape input)
-		(at 146.05 129.54 0)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "0d1c05a0-160a-46f9-b1f6-f3376edb9589")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 156.1714 129.54 0)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
@@ -8830,28 +8802,6 @@
 					(size 1.27 1.27)
 				)
 				(justify right)
-				(hide yes)
-			)
-		)
-	)
-	(global_label "NFC_EH"
-		(shape input)
-		(at 163.83 54.61 90)
-		(fields_autoplaced yes)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left)
-		)
-		(uuid "9e4dd661-c670-47f4-85ee-c7aea98afd53")
-		(property "Intersheetrefs" "${INTERSHEET_REFS}"
-			(at 163.83 44.4886 90)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-				(justify left)
 				(hide yes)
 			)
 		)
