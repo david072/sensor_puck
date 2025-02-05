@@ -2,3 +2,4 @@ build
 .cache
 sdkconfig.old
 managed_components
+**/.DS_Store

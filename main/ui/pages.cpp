@@ -121,149 +121,236 @@ void HomeScreen::on_pages_container_scroll() {
   lv_obj_add_state(m_page_indicators[visible_page], LV_STATE_CHECKED);
 }
 
-// SettingsPage::SettingsPage()
-//     : Page() {
-//   lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
-//   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
-//   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
-//                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-//   lv_obj_set_scroll_dir(page_container(), LV_DIR_VER);
+SettingsScreen::SettingsScreen()
+    : Screen() {
+  lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_START,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_row(page_container(), 0, 0);
 
-//   auto* back_button = lv_button_create(page_container());
-//   auto* back_label = body_text(back_button);
-//   lv_label_set_text(back_label, LV_SYMBOL_LEFT LV_SYMBOL_CLOSE);
-//   lv_obj_add_event_cb(
-//       back_button, [](lv_event_t*) { Ui::the().exit_fullscreen(); },
-//       LV_EVENT_SHORT_CLICKED, NULL);
+  fullscreen_back_button(page_container());
 
-//   auto* clock_settings_button = lv_button_create(page_container());
-//   auto* csb_label = body_text(clock_settings_button);
-//   lv_label_set_text(csb_label, "Uhrzeit");
-//   lv_obj_add_event_cb(
-//       clock_settings_button,
-//       [](lv_event_t* event) {
-//         auto* thiss = get_event_user_data<SettingsPage>(event);
-//         Ui::the().enter_fullscreen(thiss->page_container(),
-//                                    new ClockPage::ClockSettingsPage());
-//       },
-//       LV_EVENT_SHORT_CLICKED, this);
+  auto* cont = flex_container(page_container());
+  lv_obj_set_width(cont, LV_PCT(60));
+  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_grow(cont, 1);
+  lv_obj_set_scroll_dir(cont, LV_DIR_VER);
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START,
+                        LV_FLEX_ALIGN_START);
 
-//   spacer(page_container(), 0, 10);
+  auto list_item = [](lv_obj_t* parent, char const* icon, char const* label,
+                      lv_event_cb_t on_click, void* user_data) {
+    auto* container = flex_container(parent);
+    lv_obj_set_flex_flow(container, LV_FLEX_FLOW_ROW);
+    lv_obj_set_flex_align(container, LV_FLEX_ALIGN_START, LV_FLEX_ALIGN_START,
+                          LV_FLEX_ALIGN_START);
+    lv_obj_set_style_pad_column(container, 15, 0);
+    lv_obj_set_style_pad_ver(container, 10, 0);
 
-// #if 0
-//   m_bluetooth_checkbox = lv_checkbox_create(page_container());
-//   lv_checkbox_set_text(m_bluetooth_checkbox, "Bluetooth");
-//   lv_obj_add_event_cb(
-//       m_bluetooth_checkbox,
-//       [](lv_event_t* event) {
-//         auto* p = get_event_user_data<SettingsPage>(event);
-//         // debounce bluetooth toggle
-//         if (millis() - p->m_last_bluetooth_toggle <
-//             BLUETOOTH_CHECKBOX_DEBOUNCE_MS) {
-//           return;
-//         }
+    lv_obj_add_event_cb(container, on_click, LV_EVENT_SHORT_CLICKED, user_data);
 
-//         p->m_last_bluetooth_toggle = millis();
+    auto* icon_text = body_text(container);
+    lv_label_set_text(icon_text, icon);
+    auto* label_text = body_text(container);
+    lv_label_set_text(label_text, label);
+  };
 
-//         xTaskCreate(
-//             [](void* arg) {
-//               {
-//                 if (!Data::bluetooth_enabled()) {
-//                   Data::enable_bluetooth();
-//                 } else {
-//                   Data::disable_bluetooth();
-//                 }
-//               }
-//               vTaskDelete(NULL);
-//             },
-//             "test", 5 * 1024, NULL, MISC_TASK_PRIORITY, NULL);
-//         lv_obj_add_state(p->m_bluetooth_checkbox, LV_STATE_DISABLED);
-//       },
-//       LV_EVENT_VALUE_CHANGED, this);
-//   if (Data::bluetooth_enabled())
-//     lv_obj_add_state(m_bluetooth_checkbox, LV_STATE_CHECKED);
+  auto divider = [](lv_obj_t* parent) {
+    auto* divider = flex_container(parent);
+    lv_obj_set_style_bg_opa(divider, LV_OPA_100, 0);
+    lv_obj_set_style_bg_color(divider, Ui::the().style().colors.caption, 0);
+    lv_obj_set_size(divider, LV_PCT(100), 2);
+  };
 
-//   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothEnabled,
-//                              async_check_checkbox, m_bluetooth_checkbox);
-//   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::BluetoothDisabled,
-//                              async_uncheck_checkbox, m_bluetooth_checkbox);
+  list_item(
+      cont, SYMBOL_CLOCK, "Uhrzeit",
+      [](lv_event_t* event) {
+        Ui::the().enter_fullscreen(NULL, new TimeSettingsScreen());
+      },
+      this);
+  divider(cont);
+  list_item(
+      cont, SYMBOL_CALENDAR, "Datum",
+      [](lv_event_t*) {
+        Ui::the().enter_fullscreen(NULL, new DateSettingsScreen());
+      },
+      NULL);
+}
 
-//   spacer(page_container(), 0, 10);
+SettingsScreen::DateSettingsScreen::DateSettingsScreen()
+    : Screen() {
+  lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_START,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_row(page_container(), 0, 0);
 
-//   m_wifi_checkbox = lv_checkbox_create(page_container());
-//   lv_checkbox_set_text(m_wifi_checkbox, "WiFi");
-//   lv_obj_add_event_cb(
-//       m_wifi_checkbox,
-//       [](lv_event_t* event) {
-//         auto* cb = get_event_user_data<lv_obj_t>(event);
-//         xTaskCreate(
-//             [](void* arg) {
-//               {
-//                 if (!Data::wifi_enabled()) {
-//                   Data::enable_wifi();
-//                 } else {
-//                   Data::disable_wifi();
-//                 }
-//               }
-//               vTaskDelete(NULL);
-//             },
-//             "wifi cb", 5 * 1024, NULL, MISC_TASK_PRIORITY, NULL);
-//         lv_obj_add_state(cb, LV_STATE_DISABLED);
-//       },
-//       LV_EVENT_VALUE_CHANGED, m_wifi_checkbox);
-//   if (Data::wifi_enabled())
-//     lv_obj_add_state(m_wifi_checkbox, LV_STATE_CHECKED);
+  fullscreen_back_button(page_container());
 
-//   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiEnabled,
-//                              async_check_checkbox, m_wifi_checkbox);
-//   esp_event_handler_register(DATA_EVENT_BASE, Data::Event::WifiDisabled,
-//                              async_uncheck_checkbox, m_wifi_checkbox);
-// #endif
-// }
+  auto* cont = flex_container(page_container());
+  lv_obj_set_width(cont, LV_PCT(100));
+  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_grow(cont, 1);
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
 
-// SettingsPage::~SettingsPage() {
-//   esp_event_handler_unregister(DATA_EVENT_BASE,
-//   Data::Event::BluetoothEnabled,
-//                                async_check_checkbox);
-//   esp_event_handler_unregister(DATA_EVENT_BASE,
-//   Data::Event::BluetoothDisabled,
-//                                async_uncheck_checkbox);
-//   esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::WifiEnabled,
-//                                async_check_checkbox);
-//   esp_event_handler_unregister(DATA_EVENT_BASE, Data::Event::WifiDisabled,
-//                                async_uncheck_checkbox);
-// }
+  auto time = Data::the()->get_time();
+  m_day = time.tm_mday;
+  m_month = time.tm_mon + 1;
+  m_year = time.tm_year + 1900;
 
-// void SettingsPage::async_check_checkbox(void* handler_arg, esp_event_base_t,
-//                                         int32_t, void*) {
-//   xTaskCreate(
-//       [](void* arg) {
-//         {
-//           auto guard = Data::the()->lock_lvgl();
-//           auto* cb = static_cast<lv_obj_t*>(arg);
-//           lv_obj_add_state(cb, LV_STATE_CHECKED);
-//           lv_obj_remove_state(cb, LV_STATE_DISABLED);
-//         }
-//         vTaskDelete(NULL);
-//       },
-//       "BLE CB EN", 5 * 1024, handler_arg, 1, NULL);
-// }
+  auto dot = [](lv_obj_t* parent) {
+    auto* text = body_text(parent);
+    lv_label_set_text(text, ".");
+  };
 
-// void SettingsPage::async_uncheck_checkbox(void* handler_arg,
-// esp_event_base_t,
-//                                           int32_t, void*) {
-//   xTaskCreate(
-//       [](void* arg) {
-//         {
-//           auto guard = Data::the()->lock_lvgl();
-//           auto* toggle = static_cast<lv_obj_t*>(arg);
-//           lv_obj_remove_state(toggle, LV_STATE_CHECKED);
-//           lv_obj_remove_state(toggle, LV_STATE_DISABLED);
-//         }
-//         vTaskDelete(NULL);
-//       },
-//       "BLE CB DIS", 5 * 1024, handler_arg, 1, NULL);
-// }
+  auto* btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<DateSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_day);
+        rp->set_min(1);
+        rp->set_max(31);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  m_day_label = lv_obj_get_child(btn, 0);
+  dot(cont);
+  btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<DateSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_month);
+        rp->set_min(1);
+        rp->set_max(12);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  m_month_label = lv_obj_get_child(btn, 0);
+  dot(cont);
+  btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<DateSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_year);
+        rp->set_min(2000);
+        rp->set_max(3000);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  m_year_label = lv_obj_get_child(btn, 0);
+
+  lv_obj_add_event_cb(
+      page_container(),
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<DateSettingsScreen>(event);
+        auto d = Data::the();
+        auto time = d->get_time();
+        time.tm_mday = p->m_day;
+        time.tm_mon = p->m_month - 1;
+        time.tm_year = p->m_year - 1900;
+
+        d->set_time(time);
+        p->update_labels();
+      },
+      Ui::the().pop_fullscreen_event(), this);
+
+  update_labels();
+}
+
+void SettingsScreen::DateSettingsScreen::update_labels() {
+  lv_label_set_text_fmt(m_day_label, "%02d", m_day);
+  lv_label_set_text_fmt(m_month_label, "%02d", m_month);
+  lv_label_set_text_fmt(m_year_label, "%02d", m_year);
+}
+
+SettingsScreen::TimeSettingsScreen::TimeSettingsScreen()
+    : Screen() {
+  lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
+  lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
+  lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_START,
+                        LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
+  lv_obj_set_style_pad_row(page_container(), 0, 0);
+
+  fullscreen_back_button(page_container());
+
+  auto* cont = flex_container(page_container());
+  lv_obj_set_width(cont, LV_PCT(100));
+  lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
+  lv_obj_set_flex_grow(cont, 1);
+  lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
+                        LV_FLEX_ALIGN_CENTER);
+
+  auto time = Data::the()->get_time();
+  m_hour = time.tm_hour;
+  m_minute = time.tm_min;
+  m_second = time.tm_sec;
+
+  auto colon = [](lv_obj_t* parent) {
+    auto* text = body_text(parent);
+    lv_label_set_text(text, ":");
+  };
+
+  auto* btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimeSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_hour);
+        rp->set_max(23);
+        rp->set_min(0);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  colon(cont);
+  m_hour_label = lv_obj_get_child(btn, 0);
+  btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimeSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_minute);
+        rp->set_min(0);
+        rp->set_max(59);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  m_minute_label = lv_obj_get_child(btn, 0);
+  colon(cont);
+  btn = text_button(
+      cont, "",
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimeSettingsScreen>(event);
+        auto* rp = new RotaryInputScreen(p->m_second);
+        rp->set_min(0);
+        rp->set_max(59);
+        Ui::the().enter_fullscreen(p->page_container(), rp);
+      },
+      this);
+  m_second_label = lv_obj_get_child(btn, 0);
+
+  lv_obj_add_event_cb(
+      page_container(),
+      [](lv_event_t* event) {
+        auto* p = get_event_user_data<TimeSettingsScreen>(event);
+        auto d = Data::the();
+        auto time = d->get_time();
+        time.tm_hour = p->m_hour;
+        time.tm_min = p->m_minute;
+        time.tm_sec = p->m_second;
+
+        d->set_time(time);
+        p->update_labels();
+      },
+      Ui::the().pop_fullscreen_event(), this);
+
+  update_labels();
+}
+
+void SettingsScreen::TimeSettingsScreen::update_labels() {
+  lv_label_set_text_fmt(m_hour_label, "%02d", m_hour);
+  lv_label_set_text_fmt(m_minute_label, "%02d", m_minute);
+  lv_label_set_text_fmt(m_second_label, "%02d", m_second);
+}
 
 ClockPage::ClockPage(lv_obj_t* parent)
     : Page(parent, UPDATE_INTERVAL_MS) {
@@ -279,99 +366,29 @@ ClockPage::ClockPage(lv_obj_t* parent)
   lv_obj_set_style_text_color(m_date, Ui::the().style().colors.caption, 0);
   lv_label_set_text(m_date, "----");
 
-  // std::function<void()> cb = [this]() {
-  //   if (Ui::the().in_fullscreen())
-  //     return;
-  //   Ui::the().enter_fullscreen(page_container(), new SettingsPage());
-  // };
-  // on_long_press(page_container(), cb);
+  auto* settings_button = text_button(
+      page_container(), LV_SYMBOL_SETTINGS,
+      [](lv_event_t* event) {
+        auto* page = get_event_user_data<ClockPage>(event);
+        Ui::the().enter_fullscreen(page->page_container(),
+                                   new SettingsScreen());
+      },
+      this);
+  lv_obj_add_flag(settings_button, LV_OBJ_FLAG_FLOATING);
+  lv_obj_align(settings_button, LV_ALIGN_BOTTOM_MID, 0, -35);
+  lv_obj_set_style_bg_color(settings_button, Ui::the().style().colors.secondary,
+                            0);
 }
 
 void ClockPage::update() {
   auto time = Data::the()->get_time();
   lv_label_set_text_fmt(m_time, "%02d:%02d", time.tm_hour, time.tm_min);
-  lv_label_set_text_fmt(m_date, "%02d.%02d.%02d", time.tm_mday, time.tm_mon,
-                        time.tm_year);
+  // from https://cplusplus.com/reference/ctime/tm/
+  // tm_mon has the range 0-11
+  // tm_year is the years since 1900
+  lv_label_set_text_fmt(m_date, "%02d.%02d.%02d", time.tm_mday, time.tm_mon + 1,
+                        time.tm_year + 1900);
 }
-
-// ClockPage::ClockSettingsPage::ClockSettingsPage()
-//     : Page() {
-//   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
-//   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
-//                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-//   auto* time_container = flex_container(page_container());
-//   lv_obj_set_flex_flow(time_container, LV_FLEX_FLOW_ROW);
-//   lv_obj_set_flex_align(time_container, LV_FLEX_ALIGN_CENTER,
-//                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-//   m_time = Data::the()->get_time();
-
-#define BUTTON_WITH_LABEL(propery_to_modify, min, max)                         \
-  [this, time_container]() {                                                   \
-    auto* button = lv_button_create(time_container);                           \
-    lv_obj_add_event_cb(                                                       \
-        button,                                                                \
-        [](lv_event_t* event) {                                                \
-          auto* p = get_event_user_data<ClockSettingsPage>(event);             \
-          auto* rotary_input_page = new RotaryInputPage(p->propery_to_modify); \
-          rotary_input_page->set_min(min);                                     \
-          rotary_input_page->set_max(max);                                     \
-          Ui::the().enter_fullscreen(p->page_container(), rotary_input_page);  \
-        },                                                                     \
-        LV_EVENT_SHORT_CLICKED, this);                                         \
-    return body_text(button);                                                  \
-  }()
-
-//   auto separator_colon = [time_container]() {
-//     auto* label = body_text(time_container);
-//     lv_label_set_text(label, ":");
-//   };
-
-//   m_hour_label = BUTTON_WITH_LABEL(m_time.tm_hour, 0, 24);
-//   separator_colon();
-//   m_minute_label = BUTTON_WITH_LABEL(m_time.tm_min, 0, 60);
-//   separator_colon();
-//   m_second_label = BUTTON_WITH_LABEL(m_time.tm_sec, 0, 60);
-
-// #undef BUTTON_WITH_LABEL
-
-//   spacer(page_container(), 0, 10);
-
-//   auto* controls_container = flex_container(page_container());
-//   lv_obj_set_flex_flow(controls_container, LV_FLEX_FLOW_ROW);
-//   lv_obj_set_flex_align(controls_container, LV_FLEX_ALIGN_CENTER,
-//                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-
-//   text_button(
-//       controls_container, LV_SYMBOL_CLOSE,
-//       [](auto) { Ui::the().exit_fullscreen(); }, NULL);
-
-//   text_button(
-//       controls_container, LV_SYMBOL_OK,
-//       [](lv_event_t* event) {
-//         auto* p = get_event_user_data<ClockSettingsPage>(event);
-//         Data::the()->set_time(p->m_time);
-//         Ui::the().exit_fullscreen();
-//       },
-//       this);
-
-//   lv_obj_add_event_cb(
-//       page_container(),
-//       [](lv_event_t* event) {
-//         auto* p = get_event_user_data<ClockSettingsPage>(event);
-//         p->update();
-//       },
-//       Ui::the().pop_fullscreen_event(), this);
-
-//   update();
-// }
-
-// void ClockPage::ClockSettingsPage::update() {
-//   lv_label_set_text_fmt(m_hour_label, "%02d", m_time.tm_hour);
-//   lv_label_set_text_fmt(m_minute_label, "%02d", m_time.tm_min);
-//   lv_label_set_text_fmt(m_second_label, "%02d", m_time.tm_sec);
-// }
 
 void format_label_with_minutes_and_seconds(lv_obj_t* label, int ms) {
   auto minutes = ms / (1000 * 60);

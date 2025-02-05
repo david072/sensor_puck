@@ -17,6 +17,12 @@ LV_FONT_DECLARE(font_montagu_slab_24);
 LV_FONT_DECLARE(font_montagu_slab_20);
 LV_FONT_DECLARE(font_montagu_slab_16);
 
+// Unicodes from fontawesome.com converted to bytes using
+// https://www.cogsci.ed.ac.uk/~richard/utf-8.cgi
+#define SYMBOL_ARROW_LEFT "\xEF\x81\xA0" // 0xF060
+#define SYMBOL_CLOCK "\xEF\x80\x97"      // 0xF017
+#define SYMBOL_CALENDAR "\xEF\x84\xB3"   // 0xF133
+
 namespace ui {
 
 constexpr unsigned long LONG_PRESS_DURATION_MS = 300;
@@ -158,14 +164,15 @@ private:
   std::vector<Page*> m_overlays;
 };
 
-lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
-lv_obj_t* text_button(lv_obj_t* parent, char const* text,
-                      lv_event_cb_t on_short_click, void* user_data);
-
 lv_obj_t* headline1(lv_obj_t* parent);
 lv_obj_t* headline2(lv_obj_t* parent);
 lv_obj_t* headline3(lv_obj_t* parent);
 lv_obj_t* body_text(lv_obj_t* parent = nullptr);
 lv_obj_t* caption(lv_obj_t* parent);
+
+lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
+lv_obj_t* text_button(lv_obj_t* parent, char const* text,
+                      lv_event_cb_t on_short_click, void* user_data);
+lv_obj_t* fullscreen_back_button(lv_obj_t* parent);
 
 } // namespace ui

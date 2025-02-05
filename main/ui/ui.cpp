@@ -174,15 +174,18 @@ void Ui::exit_fullscreen() {
     return;
 
   auto page = m_sub_screens.back();
-  if (m_sub_screens.size() == 1)
-    lv_obj_send_event(page.source, m_exit_fullscreen_event, NULL);
-  lv_obj_send_event(page.source, m_pop_fullscreen_event, NULL);
+  if (page.source != NULL) {
+    if (m_sub_screens.size() == 1)
+      lv_obj_send_event(page.source, m_exit_fullscreen_event, NULL);
+    lv_obj_send_event(page.source, m_pop_fullscreen_event, NULL);
+  }
 
   delete page.screen;
   m_sub_screens.pop_back();
 
   if (in_fullscreen()) {
-    lv_screen_load(m_sub_screens.end()->screen->page_container());
+    lv_screen_load(
+        m_sub_screens[m_sub_screens.size() - 1].screen->page_container());
   } else {
     lv_screen_load(m_home_screen->page_container());
   }
@@ -265,6 +268,18 @@ lv_obj_t* text_button(lv_obj_t* parent, char const* text,
                       user_data);
   auto* label = body_text(button);
   lv_label_set_text(label, text);
+  lv_obj_align(label, LV_ALIGN_CENTER, 0, 0);
+  return button;
+}
+
+lv_obj_t* fullscreen_back_button(lv_obj_t* parent) {
+  auto* button = text_button(
+      parent, SYMBOL_ARROW_LEFT,
+      [](lv_event_t*) { Ui::the().exit_fullscreen(); }, NULL);
+  lv_obj_align(button, LV_ALIGN_TOP_MID, 0, 0);
+  lv_obj_set_size(button, LV_PCT(100), 40);
+  lv_obj_set_style_radius(button, 0, 0);
+
   return button;
 }
 

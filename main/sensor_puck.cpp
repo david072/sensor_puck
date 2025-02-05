@@ -337,9 +337,9 @@ extern "C" void app_main() {
         // better safe than sorry.
         xTaskCreate(
             [](void*) {
-              if (!can_sleep())
-                return;
-              enter_deep_sleep();
+              if (can_sleep()) {
+                enter_deep_sleep();
+              }
               vTaskDelete(NULL);
             },
             "BEGIN DEEP SLP", 5 * 1024, NULL, BEGIN_DEEP_SLEEP_PRIORITY, NULL);

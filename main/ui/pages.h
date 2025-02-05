@@ -32,45 +32,45 @@ private:
   lv_obj_t* m_page_indicators[PAGE_COUNT] = {};
 };
 
-// class SettingsPage : public Page {
-// public:
-//   explicit SettingsPage();
-//   ~SettingsPage();
+class SettingsScreen : public Screen {
+public:
+  class DateSettingsScreen : public Screen {
+  public:
+    explicit DateSettingsScreen();
 
-//   static void async_check_checkbox(void* handler_arg, esp_event_base_t,
-//   int32_t,
-//                                    void*);
-//   static void async_uncheck_checkbox(void* handler_arg, esp_event_base_t,
-//                                      int32_t, void*);
+  private:
+    void update_labels();
 
-// protected:
-//   void update() override {}
+    lv_obj_t* m_day_label;
+    lv_obj_t* m_month_label;
+    lv_obj_t* m_year_label;
 
-// private:
-//   static constexpr u32 BLUETOOTH_CHECKBOX_DEBOUNCE_MS = 200;
+    int m_day;
+    int m_month;
+    int m_year;
+  };
 
-//   u32 m_last_bluetooth_toggle = 0;
-//   lv_obj_t* m_bluetooth_checkbox;
-//   lv_obj_t* m_wifi_checkbox;
-// };
+  class TimeSettingsScreen : public Screen {
+  public:
+    explicit TimeSettingsScreen();
+
+  private:
+    void update_labels();
+
+    lv_obj_t* m_hour_label;
+    lv_obj_t* m_minute_label;
+    lv_obj_t* m_second_label;
+
+    int m_hour;
+    int m_minute;
+    int m_second;
+  };
+
+  explicit SettingsScreen();
+};
 
 class ClockPage : public Page {
 public:
-  // class ClockSettingsPage : public Page {
-  // public:
-  //   explicit ClockSettingsPage();
-
-  // protected:
-  //   void update() override;
-
-  // private:
-  //   tm m_time;
-
-  //   lv_obj_t* m_hour_label;
-  //   lv_obj_t* m_minute_label;
-  //   lv_obj_t* m_second_label;
-  // };
-
   explicit ClockPage(lv_obj_t* parent);
 
 protected:
