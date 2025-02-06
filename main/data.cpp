@@ -29,7 +29,6 @@ void UserTimer::start(int duration) {
   if (!m_timer) {
     m_timer =
         xTimerCreate("User Timer", 1, false, NULL, [](TimerHandle_t timer) {
-          xTimerDelete(timer, 10);
           esp_event_post(DATA_EVENT_BASE, Data::Event::UserTimerExpired, NULL,
                          0, 10);
 
