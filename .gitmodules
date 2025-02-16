@@ -4,3 +4,6 @@
 [submodule "components/scd41/embedded_i2c_scd4x"]
 	path = components/scd41/embedded_i2c_scd4x
 	url = https://github.com/Sensirion/embedded-i2c-scd4x
+[submodule "components/lsm6dsox/lsm6dsox_pid"]
+	path = components/lsm6dsox/lsm6dsox_pid
+	url = https://github.com/STMicroelectronics/lsm6dsox-pid

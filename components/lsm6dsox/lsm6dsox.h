@@ -1,60 +1,61 @@
 #pragma once
 
+#include "lsm6dsox_pid/lsm6dsox_reg.h"
 #include <driver/i2c_master.h>
 #include <types.h>
+
+static constexpr u32 I2C_TIMEOUT_MS = 50;
 
 class Lsm6dsox {
 public:
   static constexpr u16 DEFAULT_ADDRESS = 0x6A;
   static constexpr u16 ALTERNATIVE_ADDRESS = 0x6B;
 
-  static constexpr u32 I2C_TIMEOUT_MS = 50;
-
   enum class DataRate : u8 {
-    Off = 0b0000,
+    Off = LSM6DSOX_XL_ODR_OFF,
     /// Low-power mody only
-    Rate1_6Hz = 0b1011,
+    Rate1_6Hz = LSM6DSOX_XL_ODR_1Hz6,
     /// Low-power mode
-    Rate12_5Hz = 0b0001,
+    Rate12_5Hz = LSM6DSOX_XL_ODR_12Hz5,
     /// Low-power mode
-    Rate26Hz = 0b0010,
+    Rate26Hz = LSM6DSOX_XL_ODR_26Hz,
     /// Low-power mode
-    Rate52Hz = 0b001,
+    Rate52Hz = LSM6DSOX_XL_ODR_52Hz,
     /// Normal mode
-    Rate104Hz = 0b0100,
+    Rate104Hz = LSM6DSOX_XL_ODR_104Hz,
     /// Normal mode
-    Rate208Hz = 0b0101,
+    Rate208Hz = LSM6DSOX_XL_ODR_208Hz,
     /// High-performance mode
-    Rate416Hz = 0b0110,
+    Rate417Hz = LSM6DSOX_XL_ODR_417Hz,
     /// High-performance mode
-    Rate833Hz = 0b0111,
+    Rate833Hz = LSM6DSOX_XL_ODR_833Hz,
     /// High-performance mode
-    Rate1_66kHz = 0b1000,
+    Rate1667Hz = LSM6DSOX_XL_ODR_1667Hz,
     /// High-performance mode
-    Rate3_33kHz = 0b1001,
+    Rate3333kHz = LSM6DSOX_XL_ODR_3333Hz,
     /// High-performance mode
-    Rate6_66kHz = 0b1010,
+    Rate6667kHz = LSM6DSOX_XL_ODR_6667Hz,
   };
 
   /// Range in `g`
   enum class AccelerometerRange : u8 {
-    Range2g = 0b00,
-    Range16g = 0b01,
-    Range4g = 0b10,
-    Range8g = 0b11,
+    Range2g = LSM6DSOX_2g,
+    Range16g = LSM6DSOX_16g,
+    Range4g = LSM6DSOX_4g,
+    Range8g = LSM6DSOX_8g,
   };
 
   /// Range in `°/s`
   enum class GyroscopeRange : u8 {
-    Range250dps = 0b00,
-    Range500dps = 0b01,
-    Range1000dps = 0b10,
-    Range2000dps = 0b11,
+    Range250dps = LSM6DSOX_250dps,
+    Range500dps = LSM6DSOX_500dps,
+    Range1000dps = LSM6DSOX_1000dps,
+    Range2000dps = LSM6DSOX_2000dps,
   };
 
   /// Accelerometer readings in m/s^2
   ///
-  /// Gyroscope readings in rad/s
+  /// Gyroscope readings in °/s
   struct Data {
     float acc_x;
     float acc_y;
@@ -72,36 +73,13 @@ public:
   void set_gyroscope_data_rate(DataRate rate) const;
   void set_gyroscope_range(GyroscopeRange range);
 
-  Data read_sensor() const;
+  std::optional<Data> read_sensor() const;
 
   void reset() const;
 
 private:
-  /// Earth's gravity in m/s^2
+  /// Earth's gravity in m/s^2 (i.e. 1g)
   static constexpr float GRAVITY_STANDARD = 9.80665f;
 
-  /// Accelerometer control register 1
-  ///
-  /// ODR_XL3 | ODR_XL2 | ODR_XL1 | ODR_XL0 | FS1_XL | FS0_XL | LPF2_XL_EN | 0
-  static constexpr u8 REG_CTRL1_XL = 0x10;
-  /// Gyroscope control register 1
-  ///
-  /// ODR_G3 | ODR_G2 | ODR_G1 | ODR_G0 | FS1_G | FS0_G | FS_125 | 0
-  static constexpr u8 REG_CTRL2_G = 0x11;
-  /// Control register 3
-  ///
-  /// BOOT | BDU | H_LACTIVE | PP_OD | SIM | IF_INC | 0 | SW_RESET
-  static constexpr u8 REG_CTRL3_C = 0x12;
-  /// Gyroscope x-axis data bit 7:0 register. The other gyroscope values are in
-  /// the next 5 registers.
-  static constexpr u8 REG_OUTX_L_G = 0x22;
-
-  void write(u8 reg, u8 data) const;
-  u8 read(u8 reg) const;
-  void read(u8 reg, u8* data, size_t length) const;
-
-  AccelerometerRange m_acc_range;
-  GyroscopeRange m_gyro_range;
-
-  i2c_master_dev_handle_t m_device;
+  stmdev_ctx_t m_device;
 };

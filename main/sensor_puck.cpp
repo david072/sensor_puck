@@ -112,9 +112,13 @@ void lsm_read_task(void* arg) {
       auto data = Data::the();
       auto values = lsm.read_sensor();
 
-      data->update_inertial_measurements(
-          Vector3(values.acc_x, -values.acc_z, values.acc_y),
-          Vector3(values.pitch, values.yaw, values.roll));
+      if (values) {
+        data->update_inertial_measurements(
+            Vector3(values->acc_x, -values->acc_z, values->acc_y),
+            Vector3(values->pitch, values->yaw, values->roll));
+      } else {
+        ESP_LOGW("LSM", "Failed reading sensor!");
+      }
     }
 
     vTaskDelay(pdMS_TO_TICKS(LSM_READ_INTERVAL_MS));

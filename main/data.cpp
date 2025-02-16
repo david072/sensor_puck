@@ -130,7 +130,7 @@ void Data::update_battery_voltage(uint32_t voltage) {
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro) {
-  m_gyroscope = low_pass_filter(gyro * RAD_TO_DEG, m_gyroscope, 0.5);
+  m_gyroscope = low_pass_filter(gyro, m_gyroscope, 0.5);
   m_acceleration =
       low_pass_filter(accel - GRAVITATIONAL_ACCELERATION, m_acceleration, 0.8);
 
