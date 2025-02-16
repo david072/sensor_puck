@@ -74,6 +74,8 @@ public:
 
   Data read_sensor() const;
 
+  void reset() const;
+
 private:
   /// Earth's gravity in m/s^2
   static constexpr float GRAVITY_STANDARD = 9.80665f;
@@ -86,6 +88,10 @@ private:
   ///
   /// ODR_G3 | ODR_G2 | ODR_G1 | ODR_G0 | FS1_G | FS0_G | FS_125 | 0
   static constexpr u8 REG_CTRL2_G = 0x11;
+  /// Control register 3
+  ///
+  /// BOOT | BDU | H_LACTIVE | PP_OD | SIM | IF_INC | 0 | SW_RESET
+  static constexpr u8 REG_CTRL3_C = 0x12;
   /// Gyroscope x-axis data bit 7:0 register. The other gyroscope values are in
   /// the next 5 registers.
   static constexpr u8 REG_OUTX_L_G = 0x22;

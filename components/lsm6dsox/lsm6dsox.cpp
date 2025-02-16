@@ -9,6 +9,8 @@ Lsm6dsox::Lsm6dsox(i2c_master_bus_handle_t i2c_handle, u16 address) {
   };
   ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_handle, &dev, &m_device));
 
+  reset();
+
   set_accelerometer_data_rate(DataRate::Rate104Hz);
   set_accelerometer_range(AccelerometerRange::Range4g);
 
@@ -108,6 +110,8 @@ Lsm6dsox::Data Lsm6dsox::read_sensor() const {
       .roll = roll,
   };
 }
+
+void Lsm6dsox::reset() const { write(REG_CTRL3_C, 0b10000101); }
 
 void Lsm6dsox::write(u8 reg, u8 data) const {
   u8 buf[2];
