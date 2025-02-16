@@ -47,11 +47,6 @@ void lvgl_tick_cb(void* arg) { lv_tick_inc(LVGL_TICK_PERIOD_MS); }
 void lvgl_port_task(void* arg) {
   constexpr u32 MAX_DELAY_MS = 1000 / CONFIG_FREERTOS_HZ;
 
-  {
-    auto lvgl_guard = Data::the()->lock_lvgl();
-    ui::Ui::the().initialize();
-  }
-
   ESP_LOGI("Display", "Starting LVGL task");
   while (true) {
     u32 time_until_next;

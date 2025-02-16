@@ -296,6 +296,10 @@ extern "C" void app_main() {
 
   ESP_LOGI("Setup", "Initialize display");
   init_display();
+  {
+    auto lvgl_guard = Data::the()->lock_lvgl();
+    ui::Ui::the().initialize();
+  }
 
   recover_from_sleep();
 
