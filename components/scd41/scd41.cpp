@@ -45,3 +45,8 @@ std::optional<Scd41::Data> Scd41::read() {
 }
 
 void Scd41::stop_periodic_measurement() { scd4x_stop_periodic_measurement(); }
+
+void Scd41::power_down() {
+  scd4x_stop_periodic_measurement();
+  scd4x_power_down();
+}

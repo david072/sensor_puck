@@ -51,12 +51,48 @@ struct DeepSleepTimer {
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 
+/// Counting semaphore to keep track of how many tasks need to perform an action
+/// before deep sleep can be entered.
+SemaphoreHandle_t g_prepare_deep_sleep_counter;
+/// Event group where the first x bits, where x is the count of
+/// g_prepare_deep_sleep_counter, indicate which tasks are ready for deep sleep.
+/// When all x bits are set, we can safely enter deep sleep.
+EventGroupHandle_t g_deep_sleep_ready_event_group;
+
+/// Helper struct for tasks to report when they are ready for deep sleep.
+struct DeepSleepPreparation {
+  DeepSleepPreparation() {
+    index = uxSemaphoreGetCount(g_prepare_deep_sleep_counter);
+    xSemaphoreGive(g_prepare_deep_sleep_counter);
+    esp_event_handler_register(
+        DATA_EVENT_BASE, Data::Event::PrepareDeepSleep,
+        [](void* task, esp_event_base_t, int32_t, void*) {
+          xTaskNotify(static_cast<TaskHandle_t>(task), 1,
+                      eSetValueWithOverwrite);
+        },
+        xTaskGetCurrentTaskHandle());
+  }
+
+  bool wait_for_event(u32 ticks_to_wait) {
+    return ulTaskNotifyTake(true, ticks_to_wait) != 0;
+  }
+
+  void ready() {
+    xEventGroupSetBits(g_deep_sleep_ready_event_group, 1 << index);
+  }
+
+private:
+  u32 index;
+};
+
 void environment_read_task(void* arg) {
+  DeepSleepPreparation deep_sleep;
+
   Bme688 bme(g_i2c_handle);
-  bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
-  bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
-  bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
-  bme.set_iir_filter_size(Bme688::FilterSize::Size3);
+  // bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
+  // bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
+  // bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
+  // bme.set_iir_filter_size(Bme688::FilterSize::Size3);
 
   Scd41 scd(g_i2c_handle);
 #if SCD_LOW_POWER
@@ -100,11 +136,22 @@ void environment_read_task(void* arg) {
       data->update_battery_voltage(battery.read_voltage());
     }
 
-    vTaskDelay(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS));
+    if (deep_sleep.wait_for_event(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS))) {
+      ESP_LOGI("ENV", "Powering down...");
+      scd.power_down();
+      bme.power_down();
+
+      deep_sleep.ready();
+      break;
+    }
   }
+
+  vTaskDelete(NULL);
 }
 
 void lsm_read_task(void* arg) {
+  DeepSleepPreparation deep_sleep;
+
   Lsm6dsox lsm(g_i2c_handle);
 
   while (true) {
@@ -121,8 +168,17 @@ void lsm_read_task(void* arg) {
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(LSM_READ_INTERVAL_MS));
+    if (deep_sleep.wait_for_event(pdMS_TO_TICKS(LSM_READ_INTERVAL_MS))) {
+      ESP_LOGI("LSM", "Powering down...");
+      lsm.set_accelerometer_data_rate(Lsm6dsox::DataRate::Off);
+      lsm.set_gyroscope_data_rate(Lsm6dsox::DataRate::Off);
+
+      deep_sleep.ready();
+      break;
+    }
   }
+
+  vTaskDelete(NULL);
 }
 
 void update_system_time_from_rtc() {
@@ -193,6 +249,16 @@ void enter_deep_sleep() {
     clear_display();
     display_enter_sleep_mode();
   }
+
+  esp_event_post(DATA_EVENT_BASE, Data::Event::PrepareDeepSleep, NULL, 0,
+                 pdMS_TO_TICKS(100));
+
+  // wait for deep sleep preparation to finish
+  auto task_count = uxSemaphoreGetCount(g_prepare_deep_sleep_counter);
+  ESP_LOGI("Sleep", "Waiting for %d tasks to prepare for deep sleep...",
+           task_count);
+  xEventGroupWaitBits(g_deep_sleep_ready_event_group, (1 << task_count) - 1,
+                      true, true, pdMS_TO_TICKS(1000));
 
   ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
   ulp_timer_resume();
@@ -274,6 +340,11 @@ void ulp_riscv_lock_acquire_wdt_aware(ulp_riscv_lock_t* lock) {
 }
 
 extern "C" void app_main() {
+  // https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/06-Event-groups#:~:text=The%20number%20of%20bits%20(or%20flags)%20stored%20within%20an%20event%20group%20is%208%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%201%2C%20or%2024%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%200.
+  auto ds_counter_max = configUSE_16_BIT_TICKS ? 8 : 24;
+  g_prepare_deep_sleep_counter = xSemaphoreCreateCounting(ds_counter_max, 0);
+  g_deep_sleep_ready_event_group = xEventGroupCreate();
+
   esp_event_loop_create_default();
 
   ESP_LOGI("Setup", "Initialize I2C master bus");

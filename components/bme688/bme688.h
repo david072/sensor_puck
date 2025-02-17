@@ -51,6 +51,8 @@ public:
   Oversampling get_humidity_oversampling();
   Oversampling get_pressure_oversampling();
 
+  void power_down();
+
 private:
   void set_conf();
   bme68x_conf get_conf();

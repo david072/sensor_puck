@@ -145,6 +145,8 @@ Bme688::Oversampling Bme688::get_pressure_oversampling() {
   return static_cast<Oversampling>(get_conf().os_pres);
 }
 
+void Bme688::power_down() { bme68x_set_op_mode(BME68X_SLEEP_MODE, &m_sensor); }
+
 void Bme688::set_conf() {
   BME_ERROR_CHECK(bme68x_set_conf(&m_conf, &m_sensor));
 }

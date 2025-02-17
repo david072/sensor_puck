@@ -25,4 +25,6 @@ public:
   std::optional<Data> read();
   /// Stops the period measurement (both normal and low power).
   void stop_periodic_measurement();
+
+  void power_down();
 };

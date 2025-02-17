@@ -57,6 +57,7 @@ public:
     WifiConnected,
     WifiDisabled,
     Inactivity,
+    PrepareDeepSleep,
   };
 
   static constexpr u32 BLUETOOTH_ADVERSISEMENT_DURATION_MS = 1 * 60 * 1000;
