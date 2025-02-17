@@ -42,6 +42,10 @@ i2c_master_bus_handle_t g_i2c_handle;
 
 Bm8563* g_rtc;
 
+/// If the user timer duration is <= this value, we don't go to sleep and
+/// instead wait for the timer to expire.
+constexpr u32 MIN_TIMER_DURATION_FOR_DEEP_SLEEP_MS = 5000;
+
 struct DeepSleepTimer {
   long sleep_start = 0;
   int original_timer_duration = 0;
@@ -218,6 +222,14 @@ void set_rtc_time(struct tm utc_tm) {
 }
 
 bool can_sleep() {
+  auto d = Data::the();
+
+  if (d->user_timer().is_running() &&
+      d->user_timer().remaining_duration_ms() <
+          MIN_TIMER_DURATION_FOR_DEEP_SLEEP_MS) {
+    return false;
+  }
+
   return !ui::Ui::the().in_fullscreen() && !Data::bluetooth_enabled();
 }
 
