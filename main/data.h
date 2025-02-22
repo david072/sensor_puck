@@ -108,7 +108,6 @@ public:
   void update_inertial_measurements(Vector3 accel, Vector3 gyro);
   void update_temperature(float temp);
   void update_humidity(float hum);
-  void update_pressure(float pressure);
   void update_co2_ppm(u16 co2_ppm);
 
   static tm get_time();
@@ -135,7 +134,6 @@ public:
 
   float temperature() const { return m_temperature; }
   float humidity() const { return m_humidity; }
-  float pressure() const { return m_pressure; }
   u16 co2_ppm() const { return m_co2_ppm; }
 
 private:
@@ -165,8 +163,6 @@ private:
   float m_temperature = 0;
   /// %
   float m_humidity = 0;
-  /// hPa
-  float m_pressure = 0;
   /// ppm
   u16 m_co2_ppm;
 };

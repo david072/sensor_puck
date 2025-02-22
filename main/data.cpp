@@ -176,7 +176,6 @@ void Data::update_temperature(float temp) {
   m_temperature = temp + TEMPERATURE_OFFSET;
 }
 void Data::update_humidity(float hum) { m_humidity = hum + HUMIDITY_OFFSET; }
-void Data::update_pressure(float pressure) { m_pressure = pressure; }
 void Data::update_co2_ppm(u16 co2_ppm) { m_co2_ppm = co2_ppm; }
 
 tm Data::get_time() {

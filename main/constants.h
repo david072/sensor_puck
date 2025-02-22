@@ -26,8 +26,11 @@ static constexpr uint8_t I2C_CHSC6X_ADDR = 0x2e;
 #if USING_CUSTOM_PCB
 static constexpr gpio_num_t BATTERY_READ_PIN = GPIO_NUM_9;
 
-static constexpr gpio_num_t B_SDA = GPIO_NUM_8;
-static constexpr gpio_num_t B_SCL = GPIO_NUM_7;
+static constexpr gpio_num_t B_SDA = GPIO_NUM_1;
+static constexpr gpio_num_t B_SCL = GPIO_NUM_2;
+
+static constexpr gpio_num_t B_LCD_SDA = GPIO_NUM_8;
+static constexpr gpio_num_t B_LCD_SCL = GPIO_NUM_7;
 
 // NOTE: Make sure to turn the "2" switch of the double switch component on the
 //  SeeedStudio display to the "KE" position, otherwise this pin will not be
@@ -39,11 +42,11 @@ static constexpr gpio_num_t B_SCL = GPIO_NUM_7;
 /// Custom PCB
 static constexpr gpio_num_t DP_BL = GPIO_NUM_48;
 static constexpr gpio_num_t DP_DC = GPIO_NUM_35;
-static constexpr gpio_num_t DP_CS = GPIO_NUM_36;
+static constexpr gpio_num_t DP_CS = GPIO_NUM_37;
 static constexpr gpio_num_t DP_SCK = GPIO_NUM_13;
 static constexpr gpio_num_t DP_MOSI = GPIO_NUM_17;
-static constexpr gpio_num_t DP_MISO = GPIO_NUM_14;
-static constexpr gpio_num_t DP_TOUCH_INT = GPIO_NUM_12;
+static constexpr gpio_num_t DP_MISO = GPIO_NUM_12;
+static constexpr gpio_num_t DP_TOUCH_INT = GPIO_NUM_14;
 #else
 static constexpr gpio_num_t BATTERY_READ_PIN = GPIO_NUM_1;
 

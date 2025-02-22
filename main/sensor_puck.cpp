@@ -1,7 +1,6 @@
 #include "battery.h"
 #include "display_driver.h"
 #include <bm8563.h>
-#include <bme688.h>
 #include <data.h>
 #include <driver/adc.h>
 #include <driver/i2c_master.h>
@@ -39,6 +38,7 @@ constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
 
 i2c_master_bus_handle_t g_i2c_handle;
+i2c_master_bus_handle_t g_lcd_i2c_handle;
 
 Bm8563* g_rtc;
 
@@ -92,12 +92,6 @@ private:
 void environment_read_task(void* arg) {
   DeepSleepPreparation deep_sleep;
 
-  Bme688 bme(g_i2c_handle);
-  // bme.set_temperature_oversampling(Bme688::Oversampling::Os8x);
-  // bme.set_humidity_oversampling(Bme688::Oversampling::Os2x);
-  // bme.set_pressure_oversampling(Bme688::Oversampling::Os4x);
-  // bme.set_iir_filter_size(Bme688::FilterSize::Size3);
-
   Scd41 scd(g_i2c_handle);
 #if SCD_LOW_POWER
   scd.start_low_power_periodic_measurement();
@@ -112,16 +106,7 @@ void environment_read_task(void* arg) {
   while (true) {
     {
       auto data = Data::the();
-      auto bme_data = bme.read_sensor();
       auto scd_data = scd.read();
-
-      if (bme_data) {
-        // data->update_temperature(bme_data->temperature);
-        // data->update_humidity(bme_data->humidity);
-        data->update_pressure(bme_data->pressure);
-      } else {
-        ESP_LOGW("BME688", "Failed reading sensor!");
-      }
 
       if (scd_data) {
         data->update_temperature(scd_data->temperature);
@@ -143,7 +128,7 @@ void environment_read_task(void* arg) {
     if (deep_sleep.wait_for_event(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS))) {
       ESP_LOGI("ENV", "Powering down...");
       scd.power_down();
-      bme.power_down();
+      // bme.power_down();
 
       deep_sleep.ready();
       break;
@@ -375,6 +360,22 @@ extern "C" void app_main() {
   };
   ESP_ERROR_CHECK(i2c_new_master_bus(&i2c_config, &g_i2c_handle));
 
+  ESP_LOGI("Setup", "Initialize LCD I2C master bus");
+  gpio_reset_pin(B_LCD_SDA);
+  gpio_reset_pin(B_LCD_SCL);
+  i2c_master_bus_config_t lcd_i2c_config = {
+      .i2c_port = 1,
+      .sda_io_num = B_LCD_SDA,
+      .scl_io_num = B_LCD_SCL,
+      .clk_source = I2C_CLK_SRC_DEFAULT,
+      .glitch_ignore_cnt = 7,
+      .flags =
+          {
+              .enable_internal_pullup = true,
+          },
+  };
+  ESP_ERROR_CHECK(i2c_new_master_bus(&lcd_i2c_config, &g_lcd_i2c_handle));
+
   load_measurements_from_ulp();
 
   ESP_LOGI("Setup", "Initialize display");
@@ -400,9 +401,9 @@ extern "C" void app_main() {
     ESP_LOGI("Setup", "Stopped ULP COCPU");
   }
 
-  init_display_touch(g_i2c_handle);
+  init_display_touch(g_lcd_i2c_handle);
 
-  g_rtc = new Bm8563(g_i2c_handle);
+  g_rtc = new Bm8563(g_lcd_i2c_handle);
   update_system_time_from_rtc();
 
   esp_event_handler_register(
