@@ -698,10 +698,47 @@ CompassPage::CompassPage(lv_obj_t* parent)
   m_heading_label = caption(page_container());
   lv_label_set_text(m_heading_label, "0° N");
   lv_obj_align(m_heading_label, LV_ALIGN_BOTTOM_MID, 0, -30);
+
+  auto* center_line_vert = flex_container(page_container());
+  lv_obj_set_style_bg_opa(center_line_vert, LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(center_line_vert, Ui::the().style().colors.caption,
+                            0);
+  lv_obj_set_size(center_line_vert, 1, 60);
+  lv_obj_align(center_line_vert, LV_ALIGN_CENTER, 0, 0);
+
+  auto* center_line_horz = flex_container(page_container());
+  lv_obj_set_style_bg_opa(center_line_horz, LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(center_line_horz, Ui::the().style().colors.caption,
+                            0);
+  lv_obj_set_size(center_line_horz, 60, 1);
+  lv_obj_align(center_line_horz, LV_ALIGN_CENTER, 0, 0);
+
+  m_crosshair = flex_container(page_container());
+  lv_obj_set_layout(m_crosshair, LV_LAYOUT_NONE);
+  lv_obj_set_style_bg_opa(m_crosshair, LV_OPA_50, 0);
+  lv_obj_set_style_bg_color(m_crosshair, Ui::the().style().colors.caption, 0);
+  lv_obj_set_style_radius(m_crosshair, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_size(m_crosshair, 40, 40);
+  lv_obj_align(m_crosshair, LV_ALIGN_CENTER, 0, 0);
+
+  auto* crosshair_vert = flex_container(m_crosshair);
+  lv_obj_set_style_bg_opa(crosshair_vert, LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(crosshair_vert,
+                            Ui::the().style().colors.on_background, 0);
+  lv_obj_set_size(crosshair_vert, 1, 30);
+  lv_obj_align(crosshair_vert, LV_ALIGN_CENTER, 0, 0);
+
+  auto* crosshair_horz = flex_container(m_crosshair);
+  lv_obj_set_style_bg_opa(crosshair_horz, LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(crosshair_horz,
+                            Ui::the().style().colors.on_background, 0);
+  lv_obj_set_size(crosshair_horz, 30, 1);
+  lv_obj_align(crosshair_horz, LV_ALIGN_CENTER, 0, 0);
 }
 
 void CompassPage::update() {
-  auto heading = Data::the()->compass_heading();
+  auto d = Data::the();
+  auto heading = d->compass_heading();
 
   auto position = [](lv_obj_t* obj, float angle) {
     // we need to do 360° - angle, since we need to "un-rotate" the UI elements
@@ -733,6 +770,20 @@ void CompassPage::update() {
   }
 
   lv_label_set_text_fmt(m_heading_label, "%.0f° %s", heading, dir_name);
+
+  auto acceleration = d->acceleration();
+  auto dx = -acceleration.x * 10;
+  auto dy = acceleration.z * 10;
+  lv_obj_set_pos(m_crosshair, dx, dy);
+
+  // fade crosshair out when its too far from the center of the screen
+  auto offset = sqrtf(dx * dx + dy * dy);
+  auto fadeout_start_dist = offset - CROSSHAIR_DISTANCE_FADEOUT_START;
+  auto opa = static_cast<u8>(LV_OPA_100) *
+             std::clamp(CROSSHAIR_FADE_DISTANCE - fadeout_start_dist, 0.f,
+                        CROSSHAIR_FADE_DISTANCE) /
+             CROSSHAIR_FADE_DISTANCE;
+  lv_obj_set_style_opa(m_crosshair, opa, 0);
 }
 
 RotaryInputScreen::RotaryInputScreen(int& value, float units_per_angle)

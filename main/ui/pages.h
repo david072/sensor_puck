@@ -157,6 +157,13 @@ private:
   /// How many degrees one item in DIRECTION_NAMES takes up.
   static constexpr float DIRECTION_SLICE_SIZE = 360.f / NUM_DIRECTION_NAMES;
 
+  /// How far the crosshair has to be from the center of the screen for it to
+  /// start fading out.
+  static constexpr float CROSSHAIR_DISTANCE_FADEOUT_START = 50.f;
+  /// How much further from CROSSHAIR_DISTANCE_FADEOUT_START the crosshair has
+  /// to be from the center for it to be completely hidden.
+  static constexpr float CROSSHAIR_FADE_DISTANCE = 20.f;
+
   void update() override;
 
   lv_obj_t* m_n;
@@ -164,6 +171,8 @@ private:
   lv_obj_t* m_s;
   lv_obj_t* m_w;
   lv_obj_t* m_heading_label;
+
+  lv_obj_t* m_crosshair;
 };
 
 class RotaryInputScreen : public Screen {
