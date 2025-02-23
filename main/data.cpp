@@ -129,10 +129,20 @@ void Data::update_battery_voltage(uint32_t voltage) {
   m_battery_percentage = MIN(m_battery_percentage, (uint8_t)100);
 }
 
-void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro) {
+void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
+                                        Vector3 mag) {
   m_gyroscope = low_pass_filter(gyro, m_gyroscope, 0.5);
   m_acceleration =
       low_pass_filter(accel - GRAVITATIONAL_ACCELERATION, m_acceleration, 0.8);
+  m_magnetic = low_pass_filter(mag + HARD_IRON_OFFSET, m_magnetic, 0.25);
+
+  m_compass_heading =
+      atan2f(m_magnetic.x, m_magnetic.z) * RAD_TO_DEG + COMPASS_HEADING_OFFSET;
+  // transform range from [-180° ; 180°] to [0° ; 360°]
+  if (m_compass_heading < 0)
+    m_compass_heading += 360.f;
+
+  m_compass_heading = 360.f - m_compass_heading;
 
   if (set_down_gesture_detected()) {
     esp_event_post(DATA_EVENT_BASE, Event::SetDownGesture, NULL, 0, 10);

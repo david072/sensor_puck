@@ -7,3 +7,6 @@
 [submodule "components/lsm6dsox/lsm6dsox_pid"]
 	path = components/lsm6dsox/lsm6dsox_pid
 	url = https://github.com/STMicroelectronics/lsm6dsox-pid
+[submodule "components/lis2mdl/lis2mdl_pid"]
+	path = components/lis2mdl/lis2mdl_pid
+	url = https://github.com/STMicroelectronics/lis2mdl-pid

@@ -44,7 +44,6 @@ HomeScreen::HomeScreen()
   // pages
   {
     m_pages_container = flex_container(page_container());
-    lv_obj_add_flag(m_pages_container, LV_OBJ_FLAG_SCROLL_ONE);
     lv_obj_set_flex_align(m_pages_container, LV_FLEX_ALIGN_START,
                           LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START);
     lv_obj_set_size(m_pages_container, lv_obj_get_width(page_container()),
@@ -53,10 +52,12 @@ HomeScreen::HomeScreen()
     lv_obj_set_flex_flow(m_pages_container, LV_FLEX_FLOW_ROW);
     lv_obj_set_scroll_dir(m_pages_container, LV_DIR_HOR);
     lv_obj_set_scroll_snap_x(m_pages_container, LV_SCROLL_SNAP_START);
+    lv_obj_add_flag(m_pages_container, LV_OBJ_FLAG_SCROLL_ONE);
 
     new AirQualityPage(m_pages_container);
     new ClockPage(m_pages_container);
     new TimerPage(m_pages_container);
+    new CompassPage(m_pages_container);
   }
 
   // overlays
@@ -661,6 +662,77 @@ void AirQualityPage::update() {
     lv_obj_set_style_text_color(m_co2_ppm,
                                 Ui::the().style().colors.on_background, 0);
   }
+}
+
+CompassPage::CompassPage(lv_obj_t* parent)
+    : Page(parent, UPDATE_INTERVAL_MS) {
+  auto* circle = flex_container(page_container());
+  lv_obj_set_style_radius(circle, LV_RADIUS_CIRCLE, 0);
+  lv_obj_set_style_border_opa(circle, LV_OPA_100, 0);
+  lv_obj_set_style_border_color(circle, Ui::the().style().colors.primary, 0);
+  lv_obj_set_style_border_width(circle, 3, 0);
+  lv_obj_set_size(circle, 80, 80);
+  lv_obj_align(circle, LV_ALIGN_CENTER, 0, 0);
+
+  auto* center_marker = flex_container(page_container());
+  lv_obj_set_style_bg_opa(center_marker, LV_OPA_100, 0);
+  lv_obj_set_style_bg_color(center_marker, Ui::the().style().colors.primary, 0);
+  lv_obj_set_size(center_marker, 3, 10);
+  lv_obj_set_style_transform_pivot_y(center_marker, LV_PCT(50), 0);
+  lv_obj_align(center_marker, LV_ALIGN_CENTER, 0, -43);
+
+  auto cardinal_direction = [](lv_obj_t* parent, char const* label) {
+    auto* dir = body_text(parent);
+    lv_label_set_text(dir, label);
+    lv_obj_align(dir, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_transform_pivot_x(dir, LV_PCT(50), 0);
+    lv_obj_set_style_transform_pivot_y(dir, LV_PCT(50), 0);
+    return dir;
+  };
+
+  m_n = cardinal_direction(page_container(), "N");
+  m_e = cardinal_direction(page_container(), "O");
+  m_s = cardinal_direction(page_container(), "S");
+  m_w = cardinal_direction(page_container(), "W");
+
+  m_heading_label = caption(page_container());
+  lv_label_set_text(m_heading_label, "0° N");
+  lv_obj_align(m_heading_label, LV_ALIGN_BOTTOM_MID, 0, -30);
+}
+
+void CompassPage::update() {
+  auto heading = Data::the()->compass_heading();
+
+  auto position = [](lv_obj_t* obj, float angle) {
+    // we need to do 360° - angle, since we need to "un-rotate" the UI elements
+    angle = (360.f - angle - 90.f) * DEG_TO_RAD;
+    lv_obj_set_pos(obj, static_cast<i32>(cosf(angle) * 60.f),
+                   static_cast<i32>(sinf(angle) * 60.f));
+  };
+
+  position(m_n, heading);
+  position(m_e, heading + 270.f);
+  position(m_s, heading + 180.f);
+  position(m_w, heading + 90.f);
+
+  char const* dir_name = "";
+  for (int i = 0; i < NUM_DIRECTION_NAMES; ++i) {
+    auto lower = -DIRECTION_SLICE_SIZE / 2 + DIRECTION_SLICE_SIZE * i;
+    auto upper = lower + DIRECTION_SLICE_SIZE;
+
+    if (heading >= lower && heading <= upper) {
+      dir_name = DIRECTION_NAMES[i];
+      break;
+    }
+  }
+
+  // special case, since the first one overlaps the 360°/0° boundary
+  if (heading >= 360.f - DIRECTION_SLICE_SIZE / 2.f ||
+      heading <= DIRECTION_SLICE_SIZE / 2.f) {
+    dir_name = DIRECTION_NAMES[0];
+  }
+
+  lv_label_set_text_fmt(m_heading_label, "%.0f° %s", heading, dir_name);
 }
 
 RotaryInputScreen::RotaryInputScreen(int& value, float units_per_angle)

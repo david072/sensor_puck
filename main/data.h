@@ -102,10 +102,19 @@ public:
   /// exceeded before allowing SDGs to be detected again
   static constexpr ulong SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS = 200;
 
+  /// Hard-iron offset for the magnetometer measurements.
+  ///
+  /// Determined by moving the device to as many different angles as possible,
+  /// plotting the points and finding the offset of the center of the sphere
+  /// they form.
+  static constexpr Vector3 HARD_IRON_OFFSET = Vector3(-.08f, .06f, -.17f);
+  /// Angle the compass heading is rotated by.
+  static constexpr float COMPASS_HEADING_OFFSET = 10.f;
+
   static Mutex<Data>::Guard the();
 
   void update_battery_voltage(uint32_t voltage);
-  void update_inertial_measurements(Vector3 accel, Vector3 gyro);
+  void update_inertial_measurements(Vector3 accel, Vector3 gyro, Vector3 mag);
   void update_temperature(float temp);
   void update_humidity(float hum);
   void update_co2_ppm(u16 co2_ppm);
@@ -131,6 +140,8 @@ public:
 
   Vector3 const& gyroscope() const { return m_gyroscope; }
   Vector3 const& acceleration() const { return m_acceleration; }
+  Vector3 const& magnetic() const { return m_magnetic; }
+  float const& compass_heading() const { return m_compass_heading; }
 
   float temperature() const { return m_temperature; }
   float humidity() const { return m_humidity; }
@@ -149,13 +160,24 @@ private:
 
   uint8_t m_battery_percentage;
 
-  /// °/s
+  // Axis definitions (looking at the front of the board with the USB-port to
+  // the left):
+  //
+  // positive x-axis: left
+  // positive y-axis: down
+  // positive z-axis: forward
+
+  /// Rotation around the respective axes °/s.
   Vector3 m_gyroscope;
-  /// m/s^2
-  /// positive x-axis: from the LSM away from the ESP
-  /// positive y-axis: upwards, towards the display
-  /// positive z-axis: parallelt to the USB-port, pointing towards it
+  /// Acceleration in the respective axes in m/s^2.
   Vector3 m_acceleration;
+  /// Magnetic field strength in the respective axes in Gauss.
+  Vector3 m_magnetic;
+  /// Current compass heading of the device in degrees.
+  ///
+  /// 0° means the positive z-axis is pointing north.
+  float m_compass_heading;
+
   float m_sdg_cooldown = 0;
   u32 m_set_down_gesture_start = 0;
 

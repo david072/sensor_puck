@@ -16,7 +16,7 @@ public:
 
 private:
   static constexpr u32 UPDATE_INTERVAL_MS = 5 * 1000;
-  static constexpr size_t PAGE_COUNT = 3;
+  static constexpr size_t PAGE_COUNT = 4;
 
   static constexpr float PAGE_INDICATOR_GAP_ANGLE = 6 * DEG_TO_RAD;
   static constexpr u32 PAGE_INDICATOR_DIAMETER = 6;
@@ -142,6 +142,28 @@ private:
   lv_obj_t* m_co2_ppm;
   lv_obj_t* m_temperature;
   lv_obj_t* m_humidity;
+};
+
+class CompassPage : public Page {
+public:
+  explicit CompassPage(lv_obj_t* parent);
+
+private:
+  static constexpr u32 UPDATE_INTERVAL_MS = 50;
+
+  static constexpr int NUM_DIRECTION_NAMES = 8;
+  static constexpr char const* DIRECTION_NAMES[NUM_DIRECTION_NAMES] = {
+      "N", "NO", "O", "SO", "S", "SW", "W", "NW"};
+  /// How many degrees one item in DIRECTION_NAMES takes up.
+  static constexpr float DIRECTION_SLICE_SIZE = 360.f / NUM_DIRECTION_NAMES;
+
+  void update() override;
+
+  lv_obj_t* m_n;
+  lv_obj_t* m_e;
+  lv_obj_t* m_s;
+  lv_obj_t* m_w;
+  lv_obj_t* m_heading_label;
 };
 
 class RotaryInputScreen : public Screen {

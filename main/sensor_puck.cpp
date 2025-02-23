@@ -11,6 +11,7 @@
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_task_wdt.h>
+#include <lis2mdl.h>
 #include <lsm6dsox.h>
 #include <lvgl.h>
 #include <scd41.h>
@@ -142,18 +143,28 @@ void lsm_read_task(void* arg) {
   DeepSleepPreparation deep_sleep;
 
   Lsm6dsox lsm(g_i2c_handle);
+  Lis2mdl lis(g_i2c_handle);
 
   while (true) {
     {
       auto data = Data::the();
-      auto values = lsm.read_sensor();
+      auto accel_gyro = lsm.read_sensor();
+      auto mag = lis.read_sensor();
 
-      if (values) {
+      if (accel_gyro && mag) {
+        auto mag_vec = Vector3(-mag->x, -mag->z, -mag->y);
         data->update_inertial_measurements(
-            Vector3(values->acc_x, -values->acc_z, values->acc_y),
-            Vector3(values->pitch, values->yaw, values->roll));
+            Vector3(-accel_gyro->acc_y, -accel_gyro->acc_z, -accel_gyro->acc_x),
+            Vector3(accel_gyro->roll, accel_gyro->yaw, accel_gyro->pitch),
+            mag_vec);
+
+        // printf("dir: %.2f°\n", atan2f(mag_vec.z, mag_vec.x) * RAD_TO_DEG);
+        // printf("(%.6f, %.6f, %.6f)\n", mag_vec.x, mag_vec.y, mag_vec.z);
       } else {
-        ESP_LOGW("LSM", "Failed reading sensor!");
+        if (!accel_gyro)
+          ESP_LOGW("LSM", "Failed reading sensor!");
+        if (!mag)
+          ESP_LOGW("LIS", "Failed reading sensor!");
       }
     }
 
@@ -161,6 +172,7 @@ void lsm_read_task(void* arg) {
       ESP_LOGI("LSM", "Powering down...");
       lsm.set_accelerometer_data_rate(Lsm6dsox::DataRate::Off);
       lsm.set_gyroscope_data_rate(Lsm6dsox::DataRate::Off);
+      lis.power_down();
 
       deep_sleep.ready();
       break;

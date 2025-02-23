@@ -11,15 +11,16 @@ i32 platform_write(void* handle, u8 reg, u8 const* bufp, uint16_t len) {
   u8 buf[len + 1];
   buf[0] = reg;
   memcpy(&buf[1], bufp, len);
-  auto res = ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_master_transmit(
-      static_cast<i2c_master_dev_handle_t>(handle), buf, 2, I2C_TIMEOUT_MS));
+  auto res = ESP_ERROR_CHECK_WITHOUT_ABORT(
+      i2c_master_transmit(static_cast<i2c_master_dev_handle_t>(handle), buf, 2,
+                          Lsm6dsox::I2C_TIMEOUT_MS));
   return res == ESP_OK ? 0 : 1;
 }
 
 i32 platform_read(void* handle, u8 reg, u8* bufp, u16 len) {
-  auto res = ESP_ERROR_CHECK_WITHOUT_ABORT(
-      i2c_master_transmit_receive(static_cast<i2c_master_dev_handle_t>(handle),
-                                  &reg, 1, bufp, len, I2C_TIMEOUT_MS));
+  auto res = ESP_ERROR_CHECK_WITHOUT_ABORT(i2c_master_transmit_receive(
+      static_cast<i2c_master_dev_handle_t>(handle), &reg, 1, bufp, len,
+      Lsm6dsox::I2C_TIMEOUT_MS));
   return res == ESP_OK ? 0 : 1;
 }
 

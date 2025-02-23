@@ -4,10 +4,9 @@
 #include <driver/i2c_master.h>
 #include <types.h>
 
-static constexpr u32 I2C_TIMEOUT_MS = 50;
-
 class Lsm6dsox {
 public:
+  static constexpr u32 I2C_TIMEOUT_MS = 50;
   static constexpr u16 DEFAULT_ADDRESS = 0x6A;
   static constexpr u16 ALTERNATIVE_ADDRESS = 0x6B;
 
