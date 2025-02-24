@@ -24,21 +24,11 @@ HomeScreen::HomeScreen()
     : Screen(UPDATE_INTERVAL_MS) {
   // battery percentage
   {
-    auto* cont = flex_container(page_container());
-    lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
-    lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER,
-                          LV_FLEX_ALIGN_CENTER);
-    lv_obj_align(cont, LV_ALIGN_TOP_MID, 0, 15);
-
-    auto* icon = caption(cont);
-    lv_label_set_text(icon, LV_SYMBOL_BATTERY_FULL);
-    lv_obj_set_style_text_color(icon, Ui::the().style().colors.on_background,
-                                0);
-
-    m_battery_percentage = caption(cont);
-    lv_label_set_text(m_battery_percentage, "---%");
+    m_battery_percentage = caption(page_container());
+    lv_label_set_text(m_battery_percentage, LV_SYMBOL_BATTERY_FULL " ---%");
     lv_obj_set_style_text_color(m_battery_percentage,
                                 Ui::the().style().colors.on_background, 0);
+    lv_obj_align(m_battery_percentage, LV_ALIGN_TOP_MID, 0, 15);
   }
 
   // pages
@@ -105,8 +95,26 @@ HomeScreen::HomeScreen()
 }
 
 void HomeScreen::update() {
-  lv_label_set_text_fmt(m_battery_percentage, "%d%%",
-                        Data::the()->battery_percentage());
+  auto battery_percentage = Data::the()->battery_percentage();
+
+#define MAKE_FORMAT(symbol) symbol " %d%%"
+
+  char const* format = "";
+
+  if (battery_percentage > 75)
+    format = MAKE_FORMAT(LV_SYMBOL_BATTERY_FULL);
+  else if (battery_percentage > 50)
+    format = MAKE_FORMAT(LV_SYMBOL_BATTERY_3);
+  else if (battery_percentage > 25)
+    format = MAKE_FORMAT(LV_SYMBOL_BATTERY_2);
+  else if (battery_percentage > 0)
+    format = MAKE_FORMAT(LV_SYMBOL_BATTERY_1);
+  else
+    format = MAKE_FORMAT(LV_SYMBOL_BATTERY_EMPTY);
+
+  lv_label_set_text_fmt(m_battery_percentage, format, battery_percentage);
+
+#undef MAKE_FORMAT
 }
 
 void HomeScreen::on_pages_container_scroll() {
