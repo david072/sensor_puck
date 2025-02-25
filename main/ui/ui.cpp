@@ -89,12 +89,15 @@ Ui::Style::Style()
 
 Ui::Ui()
     : m_style() {
+  m_data_event = register_lv_event_id();
   m_enter_fullscreen_event = register_lv_event_id();
   m_exit_fullscreen_event = register_lv_event_id();
   m_pop_fullscreen_event = register_lv_event_id();
 }
 
 void Ui::initialize() {
+  m_data_event_obj = lv_obj_create(NULL);
+
   m_home_screen = new HomeScreen();
   lv_screen_load(m_home_screen->page_container());
 

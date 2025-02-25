@@ -46,6 +46,7 @@ ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
 class Data {
 public:
   enum Event : int32_t {
+    EnvironmentDataUpdated,
     TimeChanged,
     UserTimerStarted,
     UserTimerExpired,

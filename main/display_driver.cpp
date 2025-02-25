@@ -47,6 +47,15 @@ void lvgl_tick_cb(void* arg) { lv_tick_inc(LVGL_TICK_PERIOD_MS); }
 void lvgl_port_task(void* arg) {
   constexpr u32 MAX_DELAY_MS = 1000 / CONFIG_FREERTOS_HZ;
 
+  auto event_queue = xQueueCreate(5, sizeof(Data::Event));
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, ESP_EVENT_ANY_ID,
+      [](void* event_queue, esp_event_base_t, auto event_id, void*) {
+        xQueueSend(static_cast<QueueHandle_t>(event_queue), &event_id, 10);
+      },
+      event_queue);
+
   ESP_LOGI("Display", "Starting LVGL task");
   while (true) {
     u32 time_until_next;
@@ -65,7 +74,16 @@ void lvgl_port_task(void* arg) {
 #endif
     }
 
-    usleep(1000 * time_until_next);
+    Data::Event event;
+    if (xQueuePeek(event_queue, &event, pdMS_TO_TICKS(time_until_next))) {
+      while (uxQueueMessagesWaiting(event_queue) > 0) {
+        Data::Event event;
+        xQueueReceive(event_queue, &event, 20);
+
+        lv_obj_send_event(ui::Ui::the().data_event_obj(),
+                          ui::Ui::the().data_event(), &event);
+      }
+    }
   }
 }
 

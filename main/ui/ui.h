@@ -114,6 +114,7 @@ public:
 
   Style const& style() const { return m_style; }
 
+  lv_event_code_t data_event() const { return m_data_event; }
   lv_event_code_t enter_fullscreen_event() const {
     return m_enter_fullscreen_event;
   }
@@ -134,11 +135,14 @@ public:
 
   void add_overlay(Page* overlay) { m_overlays.push_back(overlay); }
 
+  lv_obj_t* data_event_obj() { return m_data_event_obj; }
+
 private:
   Ui();
 
   Style m_style;
 
+  lv_obj_t* m_data_event_obj;
   Screen* m_home_screen;
 
   struct SubScreens {
@@ -148,6 +152,7 @@ private:
   };
 
   std::vector<SubScreens> m_sub_screens{};
+  lv_event_code_t m_data_event;
   lv_event_code_t m_enter_fullscreen_event;
   lv_event_code_t m_exit_fullscreen_event;
   lv_event_code_t m_pop_fullscreen_event;

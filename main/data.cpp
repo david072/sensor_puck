@@ -182,11 +182,23 @@ bool Data::set_down_gesture_detected() {
   return false;
 }
 
+void post_environment_data_updated_event() {
+  esp_event_post(DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated, NULL, 0,
+                 10);
+}
+
 void Data::update_temperature(float temp) {
   m_temperature = temp + TEMPERATURE_OFFSET;
+  post_environment_data_updated_event();
 }
-void Data::update_humidity(float hum) { m_humidity = hum + HUMIDITY_OFFSET; }
-void Data::update_co2_ppm(u16 co2_ppm) { m_co2_ppm = co2_ppm; }
+void Data::update_humidity(float hum) {
+  m_humidity = hum + HUMIDITY_OFFSET;
+  post_environment_data_updated_event();
+}
+void Data::update_co2_ppm(u16 co2_ppm) {
+  m_co2_ppm = co2_ppm;
+  post_environment_data_updated_event();
+}
 
 tm Data::get_time() {
   auto now = time(NULL);
