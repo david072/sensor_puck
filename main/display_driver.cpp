@@ -44,8 +44,12 @@ void lvgl_flush_cb(lv_display_t* disp, lv_area_t const* area, uint8_t* px_map) {
 
 void lvgl_tick_cb(void* arg) { lv_tick_inc(LVGL_TICK_PERIOD_MS); }
 
+constexpr i32 LVGL_EVENT_QUEUE_PREPARE_DEEP_SLEEP_ENTRY = -1;
+
 void lvgl_port_task(void* arg) {
   constexpr u32 MAX_DELAY_MS = 1000 / CONFIG_FREERTOS_HZ;
+
+  DeepSleepPreparation deep_sleep(false);
 
   {
     // auto lvgl_guard = Data::the()->lock_lvgl();
@@ -58,6 +62,14 @@ void lvgl_port_task(void* arg) {
       DATA_EVENT_BASE, ESP_EVENT_ANY_ID,
       [](void* event_queue, esp_event_base_t, auto event_id, void*) {
         xQueueSend(static_cast<QueueHandle_t>(event_queue), &event_id, 10);
+      },
+      event_queue);
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::PrepareDeepSleep,
+      [](void* event_queue, esp_event_base_t, int32_t, void*) {
+        xQueueSend(static_cast<QueueHandle_t>(event_queue),
+                   &LVGL_EVENT_QUEUE_PREPARE_DEEP_SLEEP_ENTRY, 10);
       },
       event_queue);
 
@@ -81,15 +93,26 @@ void lvgl_port_task(void* arg) {
 
     Data::Event event;
     if (xQueuePeek(event_queue, &event, pdMS_TO_TICKS(time_until_next))) {
+      bool should_quit = false;
       while (uxQueueMessagesWaiting(event_queue) > 0) {
-        Data::Event event;
+        i32 event;
         xQueueReceive(event_queue, &event, 20);
+        if (event == LVGL_EVENT_QUEUE_PREPARE_DEEP_SLEEP_ENTRY) {
+          should_quit = true;
+          break;
+        }
 
         lv_obj_send_event(ui::Ui::the().data_event_obj(),
                           ui::Ui::the().data_event(), &event);
       }
+
+      if (should_quit)
+        break;
     }
   }
+
+  deep_sleep.ready();
+  vTaskDelete(NULL);
 }
 
 void init_display() {

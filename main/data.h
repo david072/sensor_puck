@@ -45,7 +45,7 @@ ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
 
 class Data {
 public:
-  enum Event : int32_t {
+  enum Event : i32 {
     EnvironmentDataUpdated,
     TimeChanged,
     UserTimerStarted,
@@ -189,4 +189,40 @@ private:
   float m_humidity = 0;
   /// ppm
   u16 m_co2_ppm;
+};
+
+/// Counting semaphore to keep track of how many tasks need to perform an action
+/// before deep sleep can be entered.
+static SemaphoreHandle_t s_prepare_deep_sleep_counter;
+/// Event group where the first x bits, where x is the count of
+/// g_prepare_deep_sleep_counter, indicate which tasks are ready for deep sleep.
+/// When all x bits are set, we can safely enter deep sleep.
+static EventGroupHandle_t s_deep_sleep_ready_event_group;
+
+/// Helper struct for tasks to report when they are ready for deep sleep.
+struct DeepSleepPreparation {
+  DeepSleepPreparation(bool enable_notification = true) {
+    index = uxSemaphoreGetCount(s_prepare_deep_sleep_counter);
+    xSemaphoreGive(s_prepare_deep_sleep_counter);
+    if (enable_notification) {
+      esp_event_handler_register(
+          DATA_EVENT_BASE, Data::Event::PrepareDeepSleep,
+          [](void* task, esp_event_base_t, int32_t, void*) {
+            xTaskNotify(static_cast<TaskHandle_t>(task), 1,
+                        eSetValueWithOverwrite);
+          },
+          xTaskGetCurrentTaskHandle());
+    }
+  }
+
+  bool wait_for_event(u32 ticks_to_wait) {
+    return ulTaskNotifyTake(true, ticks_to_wait) != 0;
+  }
+
+  void ready() {
+    xEventGroupSetBits(s_deep_sleep_ready_event_group, 1 << index);
+  }
+
+private:
+  u32 index;
 };
