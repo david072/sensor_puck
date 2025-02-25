@@ -35,9 +35,6 @@ T* get_event_user_data(lv_event_t* event) {
   return static_cast<T*>(lv_event_get_user_data(event));
 }
 
-/// Long press detection for widgets that are children of scrollable widgets
-void on_long_press(lv_obj_t* obj, std::function<void()> callback);
-
 class Page {
 public:
   explicit Page(lv_obj_t* parent = NULL, u32 update_interval = 0);
@@ -61,18 +58,12 @@ class Screen : public Page {
 public:
   explicit Screen(u32 update_interval = 0);
   virtual ~Screen() {}
-
-protected:
-  virtual void update() override {}
 };
 
 class Overlay : public Page {
 public:
   explicit Overlay(lv_obj_t* parent, u32 update_interval = 0);
   virtual ~Overlay() {}
-
-protected:
-  virtual void update() override {}
 };
 
 class Ui {

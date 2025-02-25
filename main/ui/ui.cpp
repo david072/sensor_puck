@@ -15,67 +15,6 @@ lv_point_t get_last_touch_point() {
   return p;
 }
 
-void on_long_press(lv_obj_t* obj, std::function<void()> callback) {
-  // TODO: We are getting a lot of RELEASED events, even while the finger is
-  // still on the display, which makes long pressing kind of awkward. Fixable?
-
-  struct Args {
-    enum class State {
-      WaitingForPress,
-      Pressing,
-      WaitingForRelease,
-    };
-
-    long press_start = -1;
-    State state = State::WaitingForPress;
-    std::function<void()> callback;
-  };
-
-  auto* args = new Args{.callback = callback};
-
-  lv_obj_add_event_cb(
-      obj,
-      [](lv_event_t* event) {
-        auto* args = static_cast<Args*>(lv_event_get_user_data(event));
-        // for some reason, LV_EVENT_PRESSED is also dispatched *during* a
-        // press...
-        if (args->state != Args::State::WaitingForPress)
-          return;
-
-        args->press_start = millis();
-        args->state = Args::State::Pressing;
-      },
-      LV_EVENT_PRESSED, args);
-
-  lv_obj_add_event_cb(
-      obj,
-      [](lv_event_t* event) {
-        auto* args = static_cast<Args*>(lv_event_get_user_data(event));
-        if (args->state != Args::State::Pressing)
-          return;
-
-        if (lv_indev_get_press_moved(lv_indev_active())) {
-          args->state = Args::State::WaitingForRelease;
-          return;
-        }
-
-        if (millis() - args->press_start >= LONG_PRESS_DURATION_MS) {
-          args->callback();
-          lv_indev_wait_release(lv_indev_active());
-          args->state = Args::State::WaitingForRelease;
-        }
-      },
-      LV_EVENT_PRESSING, args);
-
-  lv_obj_add_event_cb(
-      obj,
-      [](lv_event_t* event) {
-        auto* args = static_cast<Args*>(lv_event_get_user_data(event));
-        args->state = Args::State::WaitingForPress;
-      },
-      LV_EVENT_RELEASED, args);
-}
-
 Ui& Ui::the() {
   static std::optional<Ui> ui;
   if (!ui)
