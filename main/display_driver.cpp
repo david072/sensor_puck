@@ -47,6 +47,11 @@ void lvgl_tick_cb(void* arg) { lv_tick_inc(LVGL_TICK_PERIOD_MS); }
 void lvgl_port_task(void* arg) {
   constexpr u32 MAX_DELAY_MS = 1000 / CONFIG_FREERTOS_HZ;
 
+  {
+    // auto lvgl_guard = Data::the()->lock_lvgl();
+    ui::Ui::the().initialize();
+  }
+
   auto event_queue = xQueueCreate(5, sizeof(Data::Event));
 
   esp_event_handler_register(
@@ -60,7 +65,7 @@ void lvgl_port_task(void* arg) {
   while (true) {
     u32 time_until_next;
     {
-      auto lvgl_guard = Data::the()->lock_lvgl();
+      // auto lvgl_guard = Data::the()->lock_lvgl();
       time_until_next = lv_timer_handler();
       // make sure to not trigger the watchdog waiting for next execution
       time_until_next = MIN(time_until_next, MAX_DELAY_MS);

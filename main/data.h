@@ -125,7 +125,8 @@ public:
   static void set_time(tm time);
   static void set_time(time_t unix_timestamp);
 
-  Lock::Guard lock_lvgl() { return m_lvgl_lock.lock(); }
+  // Currently not used.
+  // Lock::Guard lock_lvgl() { return m_lvgl_lock.lock(); }
 
   static void enable_bluetooth();
   static void disable_bluetooth();
@@ -155,7 +156,7 @@ private:
            SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS;
   }
 
-  Lock m_lvgl_lock;
+  // Lock m_lvgl_lock;
 
   UserTimer m_user_timer;
 
