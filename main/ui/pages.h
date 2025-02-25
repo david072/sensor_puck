@@ -77,7 +77,7 @@ protected:
   void update() override;
 
 private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
+  static constexpr uint32_t UPDATE_INTERVAL_MS = 1000;
 
   lv_obj_t* m_time;
   lv_obj_t* m_date;
@@ -93,7 +93,7 @@ public:
     void update() override;
 
   private:
-    static constexpr uint32_t UPDATE_INTERVAL_MS = 10;
+    static constexpr uint32_t UPDATE_INTERVAL_MS = 50;
 
     int m_original_timer_duration = 0;
     int m_previous_timer_duration = 0;
@@ -137,8 +137,6 @@ protected:
   void update() override;
 
 private:
-  static constexpr uint32_t UPDATE_INTERVAL_MS = 2 * 1000;
-
   lv_obj_t* m_co2_ppm;
   lv_obj_t* m_temperature;
   lv_obj_t* m_humidity;

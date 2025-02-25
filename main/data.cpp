@@ -122,11 +122,17 @@ void Data::enable_wifi() { WifiManager::the().enable_wifi(); }
 void Data::disable_wifi() { WifiManager::the().disable_wifi(); }
 bool Data::wifi_enabled() { return WifiManager::the().wifi_enabled(); }
 
+void post_environment_data_updated_event() {
+  esp_event_post(DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated, NULL, 0,
+                 10);
+}
+
 void Data::update_battery_voltage(uint32_t voltage) {
   m_battery_percentage =
       round((voltage - MIN_BATTERY_VOLTAGE) /
             (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
   m_battery_percentage = MIN(m_battery_percentage, (uint8_t)100);
+  post_environment_data_updated_event();
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
@@ -180,11 +186,6 @@ bool Data::set_down_gesture_detected() {
   }
 
   return false;
-}
-
-void post_environment_data_updated_event() {
-  esp_event_post(DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated, NULL, 0,
-                 10);
 }
 
 void Data::update_temperature(float temp) {

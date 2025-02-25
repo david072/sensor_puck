@@ -9,6 +9,15 @@
 
 namespace ui {
 
+#define DATA_EVENT_LISTENER(Type, cb, user_data)                               \
+  lv_obj_add_event_cb(                                                         \
+      Ui::the().data_event_obj(),                                              \
+      [](lv_event_t* lv_event) {                                               \
+        auto event = *static_cast<Data::Event*>(lv_event_get_param(lv_event)); \
+        (cb)(event, static_cast<Type*>(lv_event_get_user_data(lv_event)));     \
+      },                                                                       \
+      Ui::the().data_event(), user_data);
+
 /// Timer callback to toggle the opacity of the object in the timer's user data
 /// between 0 and 100
 void blink_timer_cb(lv_timer_t* timer) {
@@ -21,7 +30,7 @@ void blink_timer_cb(lv_timer_t* timer) {
 }
 
 HomeScreen::HomeScreen()
-    : Screen(UPDATE_INTERVAL_MS) {
+    : Screen() {
   // battery percentage
   {
     m_battery_percentage = caption(page_container());
@@ -92,7 +101,16 @@ HomeScreen::HomeScreen()
 
     on_pages_container_scroll();
   }
-}
+
+  DATA_EVENT_LISTENER(
+      HomeScreen,
+      [](Data::Event e, HomeScreen* home_screen) {
+        if (e != Data::Event::EnvironmentDataUpdated)
+          return;
+        home_screen->update();
+      },
+      this);
+} // namespace ui
 
 void HomeScreen::update() {
   auto battery_percentage = Data::the()->battery_percentage();
@@ -593,7 +611,7 @@ void TimerPage::TimerOverlay::update() {
 }
 
 AirQualityPage::AirQualityPage(lv_obj_t* parent)
-    : Page(parent, UPDATE_INTERVAL_MS) {
+    : Page(parent) {
   lv_obj_set_layout(page_container(), LV_LAYOUT_FLEX);
   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
@@ -653,6 +671,15 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
       lv_label_set_text(hum_unit, "% RH");
     }
   }
+
+  DATA_EVENT_LISTENER(
+      AirQualityPage,
+      [](Data::Event e, AirQualityPage* aqp) {
+        if (e != Data::Event::EnvironmentDataUpdated)
+          return;
+        aqp->update();
+      },
+      this);
 }
 
 void AirQualityPage::update() {
