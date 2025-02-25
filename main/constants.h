@@ -24,7 +24,7 @@ static constexpr uint8_t I2C_CHSC6X_ADDR = 0x2e;
 //  SeeedStudio display to the "ON" position, otherwise, this pin will be
 //  floating.
 #if USING_CUSTOM_PCB
-static constexpr gpio_num_t BATTERY_READ_PIN = GPIO_NUM_9;
+static constexpr gpio_num_t BATTERY_READ_PIN = GPIO_NUM_10;
 
 static constexpr gpio_num_t B_SDA = GPIO_NUM_1;
 static constexpr gpio_num_t B_SCL = GPIO_NUM_2;
