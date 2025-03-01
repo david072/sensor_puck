@@ -138,8 +138,7 @@ void Data::update_battery_voltage(uint32_t voltage) {
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
                                         Vector3 mag) {
   m_gyroscope = low_pass_filter(gyro, m_gyroscope, 0.5);
-  m_acceleration =
-      low_pass_filter(accel - GRAVITATIONAL_ACCELERATION, m_acceleration, 0.8);
+  m_acceleration = low_pass_filter(accel, m_acceleration, 0.8);
   m_magnetic = low_pass_filter(mag + HARD_IRON_OFFSET, m_magnetic, 0.25);
 
   m_compass_heading =
@@ -230,4 +229,8 @@ void Data::set_time(time_t unix_timestamp) {
   };
   settimeofday(&tv, NULL);
   esp_event_post(DATA_EVENT_BASE, Event::TimeChanged, NULL, 0, 0);
+}
+
+bool Data::is_upside_down() const {
+  return abs(m_acceleration.y - GRAVITATIONAL_ACCELERATION.y) < 2;
 }

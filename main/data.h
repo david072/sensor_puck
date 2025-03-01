@@ -149,6 +149,8 @@ public:
   float humidity() const { return m_humidity; }
   u16 co2_ppm() const { return m_co2_ppm; }
 
+  bool is_upside_down() const;
+
 private:
   bool set_down_gesture_detected();
   bool sdg_cooldown_exceeded() {

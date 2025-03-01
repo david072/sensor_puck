@@ -126,7 +126,7 @@ void lsm_read_task(void* arg) {
       if (accel_gyro && mag) {
         auto mag_vec = Vector3(-mag->x, -mag->z, -mag->y);
         data->update_inertial_measurements(
-            Vector3(-accel_gyro->acc_y, -accel_gyro->acc_z, -accel_gyro->acc_x),
+            Vector3(-accel_gyro->acc_y, accel_gyro->acc_z, -accel_gyro->acc_x),
             Vector3(accel_gyro->roll, accel_gyro->yaw, accel_gyro->pitch),
             mag_vec);
 
@@ -216,6 +216,9 @@ void buzzer_task(void* arg) {
         continue;
       }
     }
+
+    if (Data::the()->is_upside_down())
+      continue;
 
     for (size_t i = 0; i < BEEP_COUNT; ++i) {
       buzzer_beep();
