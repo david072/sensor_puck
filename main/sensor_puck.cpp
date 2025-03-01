@@ -20,6 +20,7 @@
 #include <ui/ui.h>
 #include <ulp_riscv.h>
 #include <ulp_riscv_app.h>
+#include <ulp_riscv_i2c.h>
 #include <ulp_riscv_lock.h>
 #include <vector>
 
@@ -279,6 +280,36 @@ bool can_sleep() {
   return !ui::Ui::the().in_fullscreen() && !Data::bluetooth_enabled();
 }
 
+void initialize_ulp_i2c() {
+  // taken from ULP_RISCV_I2C_DEFAULT_CONFIG() but THE FUCKING COMPILER IS MAD
+  // ABOUT THE NESTED DESIGNATORS AAAAAAAAAAAAAAAAAAAAAAAH
+  ulp_riscv_i2c_cfg_t i2c_cfg = {
+      .i2c_pin_cfg =
+          {
+              .sda_io_num = GPIO_NUM_3,
+              .scl_io_num = GPIO_NUM_2,
+              .sda_pullup_en = true,
+              .scl_pullup_en = true,
+          },
+      .i2c_timing_cfg =
+          {
+              .scl_low_period = 1.4,
+              .scl_high_period = 0.3,
+              .sda_duty_period = 1,
+              .scl_start_period = 2,
+              .scl_stop_period = 1.3,
+              .i2c_trans_timeout = 20,
+          },
+  };
+  i2c_cfg.i2c_pin_cfg = ulp_riscv_i2c_pin_cfg_t{
+      .sda_io_num = B_SDA,
+      .scl_io_num = B_SCL,
+      .sda_pullup_en = false,
+      .scl_pullup_en = false,
+  };
+  ESP_ERROR_CHECK(ulp_riscv_i2c_master_init(&i2c_cfg));
+}
+
 /// Saves states where necessary, sets up wakeup sources and enters deep sleep.
 /// This function does not return!
 void enter_deep_sleep() {
@@ -319,6 +350,7 @@ void enter_deep_sleep() {
                       true, true, pdMS_TO_TICKS(1000));
 
   ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
+  initialize_ulp_i2c();
   ulp_timer_resume();
   ESP_ERROR_CHECK(ulp_riscv_run());
 

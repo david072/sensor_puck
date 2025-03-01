@@ -42,8 +42,8 @@
 #include <ulp_riscv_gpio.h>
 #include <ulp_riscv_utils.h>
 
-static gpio_num_t SCL = GPIO_NUM_7;
-static gpio_num_t SDA = GPIO_NUM_8;
+static gpio_num_t SDA = GPIO_NUM_1;
+static gpio_num_t SCL = GPIO_NUM_2;
 
 #ifdef __cplusplus
 extern "C" {

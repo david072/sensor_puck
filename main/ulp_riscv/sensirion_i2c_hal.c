@@ -35,6 +35,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
+#include <ulp_riscv_i2c_ulp_core.h>
 
 /*
  * INSTRUCTIONS
@@ -60,95 +61,12 @@ int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx) { return 0; }
  * Initialize all hard- and software components that are needed for the I2C
  * communication.
  */
-void sensirion_i2c_hal_init(void) {
-  ulp_riscv_gpio_init(SCL);
-  ulp_riscv_gpio_init(SDA);
-  ulp_riscv_gpio_output_enable(SCL);
-  ulp_riscv_gpio_output_enable(SDA);
-}
+void sensirion_i2c_hal_init(void) {}
 
 /**
  * Release all resources initialized by sensirion_i2c_hal_init().
  */
-void sensirion_i2c_hal_free(void) {
-  ulp_riscv_gpio_output_disable(SCL);
-  ulp_riscv_gpio_output_disable(SDA);
-  ulp_riscv_gpio_deinit(SCL);
-  ulp_riscv_gpio_deinit(SDA);
-}
-
-void set_scl(uint8_t b) { ulp_riscv_gpio_output_level(SCL, b); }
-void set_sda(uint8_t b) { ulp_riscv_gpio_output_level(SDA, b); }
-
-void i2c_delay(void) { sensirion_i2c_hal_sleep_usec(10); }
-
-void i2c_start_condition(void) {
-  set_scl(1);
-  set_sda(0);
-  i2c_delay();
-  set_scl(0);
-  i2c_delay();
-}
-
-void i2c_transfer_bit(uint8_t bit) {
-  set_sda(bit);
-  i2c_delay();
-  set_scl(1);
-  i2c_delay();
-  set_scl(0);
-  i2c_delay();
-}
-
-void i2c_transfer_byte(uint8_t byte) {
-  for (uint8_t i = 0; i < 8; ++i) {
-    // transfer individual bits, beginning with the MSB
-    i2c_transfer_bit((byte >> (8 - i - 1)) & 1);
-  }
-
-  // accept slave acknowledge
-  ulp_riscv_gpio_output_disable(SDA);
-  i2c_delay();
-  set_scl(1);
-  i2c_delay();
-  set_scl(0);
-  i2c_delay();
-  ulp_riscv_gpio_output_enable(SDA);
-}
-
-uint8_t receive_bit(void) {
-  set_scl(1);
-  i2c_delay();
-  uint8_t result = ulp_riscv_gpio_get_level(SDA);
-  set_scl(0);
-  i2c_delay();
-  return result;
-}
-
-uint8_t i2c_receive_byte(bool acknowledge) {
-  ulp_riscv_gpio_output_disable(SDA);
-  ulp_riscv_gpio_input_enable(SDA);
-
-  uint8_t result = receive_bit();
-  for (uint8_t i = 0; i < 7; ++i) {
-    result <<= 1;
-    result |= receive_bit();
-  }
-
-  ulp_riscv_gpio_input_disable(SDA);
-  ulp_riscv_gpio_output_enable(SDA);
-
-  i2c_transfer_bit(!acknowledge);
-
-  return result;
-}
-
-void i2c_stop_condition(void) {
-  set_sda(0);
-  i2c_delay();
-  set_scl(1);
-  i2c_delay();
-  set_sda(1);
-}
+void sensirion_i2c_hal_free(void) {}
 
 /**
  * Execute one read transaction on the I2C bus, reading a given number of bytes.
@@ -161,13 +79,11 @@ void i2c_stop_condition(void) {
  * @returns 0 on success, error code otherwise
  */
 int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
-  i2c_start_condition();
-  // transfer address, setting the lowest bit to indicate a "read" transfer
-  i2c_transfer_byte((address << 1) | 0b1);
-  for (uint16_t i = 0; i < count; ++i) {
-    data[i] = i2c_receive_byte(i != count - 1);
-  }
-  i2c_stop_condition();
+  // Slave register address has been set from the preceeding write command
+  // issued by the Sensirion HAL. This is kind of shit, but unavoidable since
+  // the register address is mandatory.
+  ulp_riscv_i2c_master_set_slave_addr(address);
+  ulp_riscv_i2c_master_read_from_device(data, count);
   return 0;
 }
 
@@ -184,13 +100,9 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
  */
 int8_t sensirion_i2c_hal_write(uint8_t address, uint8_t const* data,
                                uint16_t count) {
-  i2c_start_condition();
-  // transfer address, unsetting the lowest bit to indicate a "write" transfer
-  i2c_transfer_byte(address << 1);
-  for (uint16_t i = 0; i < count; ++i) {
-    i2c_transfer_byte(data[i]);
-  }
-  i2c_stop_condition();
+  ulp_riscv_i2c_master_set_slave_addr(address);
+  ulp_riscv_i2c_master_set_slave_reg_addr(data[0]);
+  ulp_riscv_i2c_master_write_to_device(&data[1], count - 1);
   return 0;
 }
 
