@@ -4,6 +4,7 @@
 #include <data.h>
 #include <driver/adc.h>
 #include <driver/i2c_master.h>
+#include <driver/ledc.h>
 #include <driver/rtc_io.h>
 #include <esp_adc/adc_cali.h>
 #include <esp_adc/adc_cali_scheme.h>
@@ -37,6 +38,11 @@ constexpr u32 ENV_READ_INTERVAL_MS = 5 * 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
+
+constexpr u32 BEEP_DURATION_MS = 100;
+constexpr u32 BEEP_COUNT = 2;
+constexpr i64 MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 5 * 60 * 1000; // 5min
+constexpr i64 BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 1 * 60 * 1000;      // 1min
 
 i2c_master_bus_handle_t g_i2c_handle;
 i2c_master_bus_handle_t g_lcd_i2c_handle;
@@ -143,6 +149,80 @@ void lsm_read_task(void* arg) {
       deep_sleep.ready();
       break;
     }
+  }
+
+  vTaskDelete(NULL);
+}
+
+void initialize_buzzer_ledc() {
+  ledc_timer_config_t ledc_timer = {
+      .speed_mode = BUZZER_LEDC_MODE,
+      .duty_resolution = BUZZER_LEDC_DUTY_RES,
+      .timer_num = BUZZER_LEDC_TIMER,
+      .freq_hz = 2700,
+      .clk_cfg = BUZZER_LEDC_CLK,
+  };
+  ESP_ERROR_CHECK(ledc_timer_config(&ledc_timer));
+
+  ledc_channel_config_t ledc_channel = {
+      .gpio_num = BUZZER_PIN,
+      .speed_mode = BUZZER_LEDC_MODE,
+      .channel = BUZZER_LEDC_CHANNEL,
+      .intr_type = LEDC_INTR_DISABLE,
+      .timer_sel = BUZZER_LEDC_TIMER,
+      .duty = 0,
+      .hpoint = 0,
+  };
+  ESP_ERROR_CHECK(ledc_channel_config(&ledc_channel));
+  ESP_ERROR_CHECK(ledc_set_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL, 1024));
+  ESP_ERROR_CHECK(ledc_update_duty(BUZZER_LEDC_MODE, BUZZER_LEDC_CHANNEL));
+  ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+}
+
+void buzzer_beep() {
+  ESP_ERROR_CHECK(ledc_timer_rst(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+  ESP_ERROR_CHECK(ledc_timer_resume(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+  vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
+  ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+}
+
+void buzzer_task(void* arg) {
+  initialize_buzzer_ledc();
+
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated,
+      [](void* task, char const*, auto, void*) {
+        xTaskNotify(static_cast<TaskHandle_t>(task), 1, eSetValueWithOverwrite);
+      },
+      xTaskGetCurrentTaskHandle());
+
+  i64 last_beep = 0;
+  while (true) {
+    ulTaskNotifyTake(true, portMAX_DELAY);
+    auto co2 = Data::the()->co2_ppm();
+    if (co2 < MEDIOCRE_CO2_PPM_LEVEL)
+      continue;
+
+    if (co2 >= MEDIOCRE_CO2_PPM_LEVEL && co2 < BAD_CO2_PPM_LEVEL) {
+      if (last_beep > 0 && esp_timer_get_time() - last_beep <
+                               MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+        continue;
+      }
+    }
+
+    if (co2 >= BAD_CO2_PPM_LEVEL) {
+      if (last_beep > 0 && esp_timer_get_time() - last_beep <
+                               BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+        continue;
+      }
+    }
+
+    for (size_t i = 0; i < BEEP_COUNT; ++i) {
+      buzzer_beep();
+      vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
+    }
+
+    last_beep = esp_timer_get_time();
   }
 
   vTaskDelete(NULL);
@@ -417,6 +497,7 @@ extern "C" void app_main() {
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
+  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
 
   initialize_ulp_riscv();
 

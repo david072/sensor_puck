@@ -1,6 +1,7 @@
 #pragma once
 
 #include <driver/gpio.h>
+#include <driver/ledc.h>
 #include <stdint.h>
 #include <types.h>
 
@@ -25,6 +26,7 @@ static constexpr uint8_t I2C_CHSC6X_ADDR = 0x2e;
 //  floating.
 #if USING_CUSTOM_PCB
 static constexpr gpio_num_t BATTERY_READ_PIN = GPIO_NUM_10;
+static constexpr gpio_num_t BUZZER_PIN = GPIO_NUM_9;
 
 static constexpr gpio_num_t B_SDA = GPIO_NUM_1;
 static constexpr gpio_num_t B_SCL = GPIO_NUM_2;
@@ -69,6 +71,12 @@ static constexpr u16 DP_CMD_BIT_WIDTH = 8;
 static constexpr u16 DP_PARAM_BIT_WIDTH = 8;
 static constexpr u32 DP_PIXEL_CLOCK = 20 * 1000 * 1000; // 20 MHz
 static constexpr size_t LVGL_DRAW_BUF_LINES = 100;
+
+constexpr ledc_mode_t BUZZER_LEDC_MODE = LEDC_LOW_SPEED_MODE;
+constexpr ledc_timer_bit_t BUZZER_LEDC_DUTY_RES = LEDC_TIMER_13_BIT;
+constexpr ledc_timer_t BUZZER_LEDC_TIMER = LEDC_TIMER_0;
+constexpr ledc_clk_cfg_t BUZZER_LEDC_CLK = LEDC_AUTO_CLK;
+constexpr ledc_channel_t BUZZER_LEDC_CHANNEL = LEDC_CHANNEL_0;
 
 static constexpr u32 MISC_TASK_PRIORITY = 0;
 static constexpr u32 ENV_TASK_PRIORITY = 1;

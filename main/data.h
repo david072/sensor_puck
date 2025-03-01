@@ -91,7 +91,7 @@ public:
   static constexpr float SDG_END_ACCELERATION = 0.5;
   /// Minimum time for vertical acceleration to return back to
   /// SDG_END_ACCELERATION
-  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS = 80;
+  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS = 180;
   /// Maximum time for vertical acceleration to return back to
   /// SDG_END_ACCELERATION
   static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS = 300;
