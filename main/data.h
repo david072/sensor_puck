@@ -78,7 +78,7 @@ public:
   /// Temperature correction offset in °C
   static constexpr float TEMPERATURE_OFFSET = 0;
   /// Humidity correction offset in %
-  static constexpr float HUMIDITY_OFFSET = 12;
+  static constexpr float HUMIDITY_OFFSET = 0;
 
   /// Gravitational acceleration to correct the accelerometer's values
   static constexpr Vector3 GRAVITATIONAL_ACCELERATION = Vector3(0, 9.71, 0);

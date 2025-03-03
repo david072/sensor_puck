@@ -15,7 +15,9 @@
 #include <lis2mdl.h>
 #include <lsm6dsox.h>
 #include <lvgl.h>
+#include <mbedtls/base64.h>
 #include <scd41.h>
+#include <st25dv.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
 #include <ulp_riscv.h>
@@ -45,9 +47,13 @@ constexpr u32 BEEP_COUNT = 2;
 constexpr i64 MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 5 * 60 * 1000; // 5min
 constexpr i64 BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 1 * 60 * 1000;      // 1min
 
+constexpr u32 NFC_DATA_UPDATE_INTERVAL_MS = 30 * 1000;
+constexpr char const* NFC_URL_ADDRESS = "sensor-puck.web.app?d=";
+
 i2c_master_bus_handle_t g_i2c_handle;
 i2c_master_bus_handle_t g_lcd_i2c_handle;
 
+St25dv16kc* g_nfc;
 Bm8563* g_rtc;
 
 /// If the user timer duration is <= this value, we don't go to sleep and
@@ -62,6 +68,49 @@ struct DeepSleepTimer {
 
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
+
+void update_nfc_data_if_necessary() {
+  static i64 last_update = 0;
+  if (esp_timer_get_time() - last_update < NFC_DATA_UPDATE_INTERVAL_MS * 1000)
+    return;
+
+  last_update = esp_timer_get_time();
+  ESP_LOGW("ENV", "Updating NFC data...");
+
+  auto d = Data::the();
+
+#define I32_TO_BYTES(num)                                                      \
+  static_cast<u8>((num >> 24) & 0xFF), static_cast<u8>((num >> 16) & 0xFF),    \
+      static_cast<u8>((num >> 8) & 0xFF), static_cast<u8>((num >> 0) & 0xFF)
+
+  auto co2 = static_cast<u32>(d->co2_ppm() * 100);
+  auto temp = static_cast<i32>(round(d->temperature() * 100.f));
+  auto hum = static_cast<i32>(round(d->humidity() * 100.f));
+
+  u8 nfc_buf[] = {
+      0x00, I32_TO_BYTES(co2), 0x01, I32_TO_BYTES(temp),
+      0x02, I32_TO_BYTES(hum),
+  };
+  u8 b64_buf[64];
+  size_t b64_buf_len;
+  mbedtls_base64_encode(b64_buf, 64, &b64_buf_len, nfc_buf, sizeof(nfc_buf));
+
+  // replace characters that are not URL safe
+  for (size_t i = 0; i < b64_buf_len; ++i) {
+    if (b64_buf[i] == '+') {
+      b64_buf[i] = '-';
+    } else if (b64_buf[i] == '/') {
+      b64_buf[i] = '_';
+    }
+  }
+
+  std::string uri = NFC_URL_ADDRESS;
+  uri.append((char*)b64_buf, b64_buf_len);
+
+  auto record = nfc::build_ndef_uri_record(nfc::UriPrefix::Https, uri);
+  g_nfc->write_ndef_record(record);
+  nfc::free_ndef_record(record);
+}
 
 void environment_read_task(void* arg) {
   DeepSleepPreparation deep_sleep;
@@ -98,6 +147,8 @@ void environment_read_task(void* arg) {
 
       data->update_battery_voltage(battery.read_voltage());
     }
+
+    update_nfc_data_if_necessary();
 
     if (deep_sleep.wait_for_event(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS))) {
       ESP_LOGI("ENV", "Powering down...");
@@ -218,8 +269,10 @@ void buzzer_task(void* arg) {
       }
     }
 
-    if (Data::the()->is_upside_down())
+    if (Data::the()->is_upside_down()) {
+      last_beep = esp_timer_get_time();
       continue;
+    }
 
     for (size_t i = 0; i < BEEP_COUNT; ++i) {
       buzzer_beep();
@@ -494,6 +547,8 @@ extern "C" void app_main() {
 
   g_rtc = new Bm8563(g_lcd_i2c_handle);
   update_system_time_from_rtc();
+
+  g_nfc = new St25dv16kc(g_i2c_handle);
 
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::TimeChanged,
