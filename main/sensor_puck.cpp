@@ -69,14 +69,7 @@ struct DeepSleepTimer {
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 
-void update_nfc_data_if_necessary() {
-  static i64 last_update = 0;
-  if (esp_timer_get_time() - last_update < NFC_DATA_UPDATE_INTERVAL_MS * 1000)
-    return;
-
-  last_update = esp_timer_get_time();
-  ESP_LOGW("ENV", "Updating NFC data...");
-
+void update_nfc_data() {
   auto d = Data::the();
 
 #define I32_TO_BYTES(num)                                                      \
@@ -110,6 +103,14 @@ void update_nfc_data_if_necessary() {
   auto record = nfc::build_ndef_uri_record(nfc::UriPrefix::Https, uri);
   g_nfc->write_ndef_record(record);
   nfc::free_ndef_record(record);
+}
+
+void update_nfc_data_if_necessary() {
+  static i64 last_update = 0;
+  if (esp_timer_get_time() - last_update < NFC_DATA_UPDATE_INTERVAL_MS * 1000)
+    return;
+  last_update = esp_timer_get_time();
+  update_nfc_data();
 }
 
 void environment_read_task(void* arg) {
@@ -365,7 +366,7 @@ void initialize_ulp_i2c() {
 
 /// Saves states where necessary, sets up wakeup sources and enters deep sleep.
 /// This function does not return!
-void enter_deep_sleep() {
+void enter_deep_sleep(bool sparse = false) {
   // TODO: Do proper cleanup? We do a lot of heap allocations that are
   // never freed, but then RAM is reset on wakeup, so does it
   // matter?
@@ -387,21 +388,27 @@ void enter_deep_sleep() {
       deep_sleep_timer = DeepSleepTimer{};
     }
 
-    set_display_backlight(false);
-    clear_display();
-    display_enter_sleep_mode();
+    if (!sparse) {
+      set_display_backlight(false);
+      clear_display();
+      display_enter_sleep_mode();
+    }
   }
 
-  esp_event_post(DATA_EVENT_BASE, Data::Event::PrepareDeepSleep, NULL, 0,
-                 pdMS_TO_TICKS(100));
+  if (!sparse) {
+    esp_event_post(DATA_EVENT_BASE, Data::Event::PrepareDeepSleep, NULL, 0,
+                   pdMS_TO_TICKS(100));
 
-  // wait for deep sleep preparation to finish
-  auto task_count = uxSemaphoreGetCount(s_prepare_deep_sleep_counter);
-  ESP_LOGI("Sleep", "Waiting for %d tasks to prepare for deep sleep...",
-           task_count);
-  xEventGroupWaitBits(s_deep_sleep_ready_event_group, (1 << task_count) - 1,
-                      true, true, pdMS_TO_TICKS(1000));
+    // wait for deep sleep preparation to finish
+    auto task_count = uxSemaphoreGetCount(s_prepare_deep_sleep_counter);
+    ESP_LOGI("Sleep", "Waiting for %d tasks to prepare for deep sleep...",
+             task_count);
+    xEventGroupWaitBits(s_deep_sleep_ready_event_group, (1 << task_count) - 1,
+                        true, true, pdMS_TO_TICKS(1000));
+  }
 
+  ulp_update_nfc_data_only = 0;
+  ulp_times_ran = 0;
   ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
   initialize_ulp_i2c();
   ulp_timer_resume();
@@ -482,6 +489,13 @@ void ulp_riscv_lock_acquire_wdt_aware(ulp_riscv_lock_t* lock) {
            (esp_timer_get_time() - start) / 1000);
 }
 
+void safely_stop_ulp_riscv() {
+  ulp_riscv_lock_acquire_wdt_aware((ulp_riscv_lock_t*)&ulp_lock);
+  ulp_riscv_timer_stop();
+  ulp_riscv_halt();
+  ulp_riscv_lock_release((ulp_riscv_lock_t*)&ulp_lock);
+}
+
 extern "C" void app_main() {
   // https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/06-Event-groups#:~:text=The%20number%20of%20bits%20(or%20flags)%20stored%20within%20an%20event%20group%20is%208%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%201%2C%20or%2024%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%200.
   auto ds_counter_max = configUSE_16_BIT_TICKS ? 8 : 24;
@@ -524,6 +538,27 @@ extern "C" void app_main() {
 
   load_measurements_from_ulp();
 
+  g_nfc = new St25dv16kc(g_i2c_handle);
+
+  if (did_initialize_ulp_riscv && ulp_update_nfc_data_only &&
+      esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_ULP) {
+    // I technically don't want to stop the ULP here, but it somehow doesn't run
+    // anymore otherwise. Also, the ESP-IDF docs say that deep sleep wakeup
+    // sources are not disabled after wakeup, however if we don't re-enable them
+    // here, e.g. waking up by touching the display doesn't work anymore?? This
+    // means we have to be careful to recover the timer and everything here,
+    // otherwise we will not be woken up for it again.
+    safely_stop_ulp_riscv();
+    ESP_LOGI("Setup", "Updating NFC data while staying silent");
+
+    recover_from_sleep();
+    update_nfc_data();
+    ulp_update_nfc_data_only = false;
+
+    enter_deep_sleep(true);
+    return;
+  }
+
   ESP_LOGI("Setup", "Initialize display");
   init_display();
 
@@ -535,11 +570,7 @@ extern "C" void app_main() {
     // can just stop the ULP. Since we have the lock, we can
     // safely tell it to halt without interfering with the running program.
     ESP_LOGI("Setup", "Waiting for ULP COCPU to release lock...");
-    ulp_riscv_lock_acquire_wdt_aware((ulp_riscv_lock_t*)&ulp_lock);
-    ulp_riscv_timer_stop();
-    ulp_riscv_halt();
-    ulp_riscv_lock_release((ulp_riscv_lock_t*)&ulp_lock);
-
+    safely_stop_ulp_riscv();
     ESP_LOGI("Setup", "Stopped ULP COCPU");
   }
 
@@ -547,8 +578,6 @@ extern "C" void app_main() {
 
   g_rtc = new Bm8563(g_lcd_i2c_handle);
   update_system_time_from_rtc();
-
-  g_nfc = new St25dv16kc(g_i2c_handle);
 
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::TimeChanged,
