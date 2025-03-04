@@ -72,17 +72,16 @@ RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 void update_nfc_data() {
   auto d = Data::the();
 
-#define I32_TO_BYTES(num)                                                      \
-  static_cast<u8>((num >> 24) & 0xFF), static_cast<u8>((num >> 16) & 0xFF),    \
-      static_cast<u8>((num >> 8) & 0xFF), static_cast<u8>((num >> 0) & 0xFF)
+#define I16_TO_BYTES(num)                                                      \
+  static_cast<u8>((num >> 8) & 0xFF), static_cast<u8>((num >> 0) & 0xFF)
 
-  auto co2 = static_cast<u32>(d->co2_ppm() * 100);
-  auto temp = static_cast<i32>(round(d->temperature() * 100.f));
-  auto hum = static_cast<i32>(round(d->humidity() * 100.f));
+  auto co2 = d->co2_ppm();
+  auto temp = static_cast<i16>(round(d->temperature() * 100.f));
+  auto hum = static_cast<i16>(round(d->humidity() * 100.f));
 
   u8 nfc_buf[] = {
-      0x00, I32_TO_BYTES(co2), 0x01, I32_TO_BYTES(temp),
-      0x02, I32_TO_BYTES(hum),
+      0x00, I16_TO_BYTES(co2), 0x01, I16_TO_BYTES(temp),
+      0x02, I16_TO_BYTES(hum),
   };
   u8 b64_buf[64];
   size_t b64_buf_len;

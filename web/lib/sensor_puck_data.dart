@@ -22,21 +22,16 @@ enum Iaq {
       .fold(Iaq.excellent, (v, el) => Iaq.values[max(v.index, el!.index)]);
 }
 
-void encodeInt32Into(List<int> bytes, int i) {
-  var value = i.toSigned(32);
-  bytes.add((value >> 24) & 0xFF);
-  bytes.add((value >> 16) & 0xFF);
+void encodeInt16Into(List<int> bytes, int i) {
+  var value = i.toSigned(16);
   bytes.add((value >> 8) & 0xFF);
   bytes.add((value >> 0) & 0xFF);
 }
 
-int decodeInt32(List<int> bytes) {
-  var value = Int32.ZERO |
-      (bytes.removeAt(0) << 24) |
-      (bytes.removeAt(0) << 16) |
-      (bytes.removeAt(0) << 8) |
-      bytes.removeAt(0);
-
+int decodeInt16(List<int> bytes) {
+  var value = Int32.ZERO | (bytes.removeAt(0) << 8) | bytes.removeAt(0);
+  // if the top bit is set (i.e. the number is negative), extend the sign bit all the way to the left
+  if (value >> 15 > 0) value |= 0xFFFF << 16;
   return value.toInt();
 }
 
@@ -82,12 +77,11 @@ sealed class SensorPuckValue {
 }
 
 class Co2PpmValue extends SensorPuckValue {
-  final double ppm;
+  final int ppm;
 
   const Co2PpmValue(this.ppm) : super("ppm", SensorPuckValueType.co2);
 
-  static Co2PpmValue decode(List<int> bytes) =>
-      Co2PpmValue(decodeInt32(bytes) / 100);
+  static Co2PpmValue decode(List<int> bytes) => Co2PpmValue(decodeInt16(bytes));
 
   @override
   Iaq? iaq() => switch (ppm) {
@@ -101,7 +95,7 @@ class Co2PpmValue extends SensorPuckValue {
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt32Into(bytes, (ppm * 100).round());
+    encodeInt16Into(bytes, ppm);
   }
 }
 
@@ -112,11 +106,11 @@ class TemperatureValue extends SensorPuckValue {
       : super("°C", SensorPuckValueType.temperature);
 
   static TemperatureValue decode(List<int> bytes) =>
-      TemperatureValue(decodeInt32(bytes) / 100);
+      TemperatureValue(decodeInt16(bytes) / 100);
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt32Into(bytes, (temperature * 100).round());
+    encodeInt16Into(bytes, (temperature * 100).round());
   }
 }
 
@@ -126,11 +120,11 @@ class HumidityValue extends SensorPuckValue {
   const HumidityValue(this.humidity) : super("%", SensorPuckValueType.humidity);
 
   static HumidityValue decode(List<int> bytes) =>
-      HumidityValue(decodeInt32(bytes) / 100);
+      HumidityValue(decodeInt16(bytes) / 100);
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt32Into(bytes, (humidity * 100).round());
+    encodeInt16Into(bytes, (humidity * 100).round());
   }
 }
 
