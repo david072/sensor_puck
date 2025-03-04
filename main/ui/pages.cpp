@@ -492,8 +492,10 @@ TimerPage::TimerPage(lv_obj_t* parent)
         auto* p = static_cast<TimerPage*>(handler_arg);
         p->m_duration_ms = 0;
         lv_timer_reset(p->m_time_blink_timer);
+        // each repetition of the timer toggles the opacity of the label,
+        // therefore, for n blinks, we need n * 2 repetitions of the timer
         lv_timer_set_repeat_count(p->m_time_blink_timer,
-                                  BLINK_TIMER_REPEAT_COUNT);
+                                  BLINK_TIMER_REPEAT_COUNT * 2);
         lv_timer_resume(p->m_time_blink_timer);
       },
       this);
@@ -585,7 +587,10 @@ TimerPage::TimerOverlay::TimerOverlay(lv_obj_t* parent)
       [](void* handler_arg, esp_event_base_t, int32_t, void*) {
         auto* p = static_cast<TimerOverlay*>(handler_arg);
         lv_timer_reset(p->m_blink_timer);
-        lv_timer_set_repeat_count(p->m_blink_timer, BLINK_TIMER_REPEAT_COUNT);
+        // each repetition of the timer toggles the opacity of the overlay,
+        // therefore, for n blinks, we need n * 2 repetitions of the timer
+        lv_timer_set_repeat_count(p->m_blink_timer,
+                                  BLINK_TIMER_REPEAT_COUNT * 2);
         lv_timer_resume(p->m_blink_timer);
       },
       this);

@@ -232,55 +232,82 @@ void initialize_buzzer_ledc() {
   ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
 }
 
-void buzzer_beep() {
+void buzzer_beep(u32 duration_ms) {
   ESP_ERROR_CHECK(ledc_timer_rst(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
   ESP_ERROR_CHECK(ledc_timer_resume(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
-  vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
+  vTaskDelay(pdMS_TO_TICKS(duration_ms));
   ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
 }
 
 void buzzer_task(void* arg) {
   initialize_buzzer_ledc();
 
+  constexpr u32 ENVIRONMENT_DATA_UPDATED_BIT = 0x01;
+  constexpr u32 USER_TIMER_EXPIRED_BIT = 0x02;
+
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated,
       [](void* task, char const*, auto, void*) {
-        xTaskNotify(static_cast<TaskHandle_t>(task), 1, eSetValueWithOverwrite);
+        xTaskNotify(static_cast<TaskHandle_t>(task),
+                    ENVIRONMENT_DATA_UPDATED_BIT, eSetBits);
       },
       xTaskGetCurrentTaskHandle());
 
-  i64 last_beep = 0;
+  esp_event_handler_register(
+      DATA_EVENT_BASE, Data::Event::UserTimerExpired,
+      [](void* task, char const*, auto, void*) {
+        xTaskNotify(static_cast<TaskHandle_t>(task), USER_TIMER_EXPIRED_BIT,
+                    eSetBits);
+      },
+      xTaskGetCurrentTaskHandle());
+
+  i64 last_co2_beep = 0;
   while (true) {
-    ulTaskNotifyTake(true, portMAX_DELAY);
-    auto co2 = Data::the()->co2_ppm();
-    if (co2 < MEDIOCRE_CO2_PPM_LEVEL)
-      continue;
-
-    if (co2 >= MEDIOCRE_CO2_PPM_LEVEL && co2 < BAD_CO2_PPM_LEVEL) {
-      if (last_beep > 0 && esp_timer_get_time() - last_beep <
-                               MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
-        continue;
-      }
-    }
-
-    if (co2 >= BAD_CO2_PPM_LEVEL) {
-      if (last_beep > 0 && esp_timer_get_time() - last_beep <
-                               BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
-        continue;
-      }
-    }
+    u32 notified_value;
+    xTaskNotifyWait(false, ULONG_MAX, &notified_value, portMAX_DELAY);
 
     if (Data::the()->is_upside_down()) {
-      last_beep = esp_timer_get_time();
+      last_co2_beep = esp_timer_get_time();
       continue;
     }
 
-    for (size_t i = 0; i < BEEP_COUNT; ++i) {
-      buzzer_beep();
-      vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
+    if ((notified_value & ENVIRONMENT_DATA_UPDATED_BIT) != 0) {
+      auto co2 = Data::the()->co2_ppm();
+
+      if (co2 < MEDIOCRE_CO2_PPM_LEVEL)
+        goto env_data_updated_end;
+
+      if (co2 >= MEDIOCRE_CO2_PPM_LEVEL && co2 < BAD_CO2_PPM_LEVEL) {
+        if (last_co2_beep > 0 &&
+            esp_timer_get_time() - last_co2_beep <
+                MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+          goto env_data_updated_end;
+        }
+      }
+
+      if (co2 >= BAD_CO2_PPM_LEVEL) {
+        if (last_co2_beep > 0 &&
+            esp_timer_get_time() - last_co2_beep <
+                BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+          goto env_data_updated_end;
+        }
+      }
+
+      for (size_t i = 0; i < BEEP_COUNT; ++i) {
+        buzzer_beep(BEEP_DURATION_MS);
+        vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
+      }
+
+      last_co2_beep = esp_timer_get_time();
+    env_data_updated_end:
     }
 
-    last_beep = esp_timer_get_time();
+    if ((notified_value & USER_TIMER_EXPIRED_BIT) != 0) {
+      for (size_t i = 0; i < ui::TimerPage::BLINK_TIMER_REPEAT_COUNT; ++i) {
+        buzzer_beep(ui::TimerPage::BLINK_TIMER_PERIOD_MS);
+        vTaskDelay(pdMS_TO_TICKS(ui::TimerPage::BLINK_TIMER_PERIOD_MS));
+      }
+    }
   }
 
   vTaskDelete(NULL);
@@ -562,6 +589,7 @@ extern "C" void app_main() {
   ESP_LOGI("Setup", "Initialize display");
   init_display();
 
+  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
   recover_from_sleep();
 
   if (did_initialize_ulp_riscv) {
@@ -616,7 +644,6 @@ extern "C" void app_main() {
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
-  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
 
   initialize_ulp_riscv();
 

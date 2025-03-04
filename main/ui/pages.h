@@ -104,17 +104,15 @@ public:
 
   static constexpr uint32_t UPDATE_INTERVAL_MS = 100;
 
+  static constexpr uint32_t BLINK_TIMER_REPEAT_COUNT = 4;
+  static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
+
   explicit TimerPage(lv_obj_t* parent);
 
 protected:
   void update() override;
 
 private:
-  /// Each repetition of the timer toggles the opacity of the time label.
-  /// Therefore, n repetitions will blink the label n/2 times.
-  static constexpr uint32_t BLINK_TIMER_REPEAT_COUNT = 8;
-  static constexpr uint32_t BLINK_TIMER_PERIOD_MS = 500;
-
   void toggle_timer();
 
   int m_duration_ms = 0;
