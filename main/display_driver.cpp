@@ -74,6 +74,7 @@ void lvgl_port_task(void* arg) {
       event_queue);
 
   ESP_LOGI("Display", "Starting LVGL task");
+  xSemaphoreGive(s_lvgl_port_task_sync);
   while (true) {
     u32 time_until_next;
     {
@@ -200,8 +201,10 @@ void init_display() {
                                                             &cbs, display));
 
   ESP_LOGI("Display", "Create LVGL task");
+  s_lvgl_port_task_sync = xSemaphoreCreateBinary();
   xTaskCreate(lvgl_port_task, "LVGL", LVGL_TASK_STACK_SIZE, NULL,
               LVGL_TASK_PRIORITY, NULL);
+  xSemaphoreTake(s_lvgl_port_task_sync, pdMS_TO_TICKS(500));
 
   ESP_LOGI("Display", "Display setup done!");
 }

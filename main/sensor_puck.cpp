@@ -586,10 +586,11 @@ extern "C" void app_main() {
     return;
   }
 
+  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
+
   ESP_LOGI("Setup", "Initialize display");
   init_display();
 
-  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
   recover_from_sleep();
 
   if (did_initialize_ulp_riscv) {

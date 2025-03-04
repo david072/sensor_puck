@@ -17,6 +17,9 @@ constexpr u32 GC9A01_CMD_ENTER_SLEEP_MODE = 0x10;
 static esp_lcd_panel_io_handle_t g_panel_io_handle;
 static esp_lcd_panel_handle_t g_panel_handle;
 
+/// Binary semaphore for the lvgl_port_task to signal when its ready.
+static SemaphoreHandle_t s_lvgl_port_task_sync;
+
 void init_display();
 void init_display_touch(i2c_master_bus_handle_t i2c_handle);
 void display_enter_sleep_mode();
