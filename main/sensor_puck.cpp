@@ -398,6 +398,18 @@ void enter_deep_sleep(bool sparse = false) {
   // never freed, but then RAM is reset on wakeup, so does it
   // matter?
 
+  if (!sparse) {
+    esp_event_post(DATA_EVENT_BASE, Data::Event::PrepareDeepSleep, NULL, 0,
+                   pdMS_TO_TICKS(100));
+
+    // wait for deep sleep preparation to finish
+    auto task_count = uxSemaphoreGetCount(s_prepare_deep_sleep_counter);
+    ESP_LOGI("Sleep", "Waiting for %d tasks to prepare for deep sleep...",
+             task_count);
+    xEventGroupWaitBits(s_deep_sleep_ready_event_group, (1 << task_count) - 1,
+                        true, true, pdMS_TO_TICKS(1000));
+  }
+
   {
     auto d = Data::the();
 
@@ -420,18 +432,6 @@ void enter_deep_sleep(bool sparse = false) {
       clear_display();
       display_enter_sleep_mode();
     }
-  }
-
-  if (!sparse) {
-    esp_event_post(DATA_EVENT_BASE, Data::Event::PrepareDeepSleep, NULL, 0,
-                   pdMS_TO_TICKS(100));
-
-    // wait for deep sleep preparation to finish
-    auto task_count = uxSemaphoreGetCount(s_prepare_deep_sleep_counter);
-    ESP_LOGI("Sleep", "Waiting for %d tasks to prepare for deep sleep...",
-             task_count);
-    xEventGroupWaitBits(s_deep_sleep_ready_event_group, (1 << task_count) - 1,
-                        true, true, pdMS_TO_TICKS(1000));
   }
 
   ulp_update_nfc_data_only = 0;
