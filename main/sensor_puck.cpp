@@ -562,6 +562,9 @@ extern "C" void app_main() {
   };
   ESP_ERROR_CHECK(i2c_new_master_bus(&lcd_i2c_config, &g_lcd_i2c_handle));
 
+  initialize_nvs_flash();
+  Data::the()->initialize();
+
   g_nfc = new St25dv16kc(g_i2c_handle);
 
   if (did_initialize_ulp_riscv && ulp_update_nfc_data_only &&

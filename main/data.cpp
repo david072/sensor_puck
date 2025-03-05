@@ -3,6 +3,7 @@
 #include <constants.h>
 #include <cstdio>
 #include <esp_log.h>
+#include <preferences.h>
 #include <sys/param.h>
 #include <sys/time.h>
 
@@ -112,6 +113,11 @@ Mutex<Data>::Guard Data::the() {
   return data.lock();
 }
 
+void Data::initialize() {
+  m_muted =
+      Preferences::instance().get_bool(PREFERENCES_IS_MUTED).value_or(false);
+}
+
 void Data::enable_bluetooth() {
   BlePeripheralManager::the().start(BLUETOOTH_ADVERSISEMENT_DURATION_MS);
 }
@@ -156,6 +162,7 @@ void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
 
 void Data::set_muted(bool muted) {
   m_muted = muted;
+  Preferences::instance().set_bool(PREFERENCES_IS_MUTED, muted);
   esp_event_post(DATA_EVENT_BASE, Event::StatusUpdated, NULL, 0, 10);
 }
 

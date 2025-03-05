@@ -114,7 +114,11 @@ public:
   /// Angle the compass heading is rotated by.
   static constexpr float COMPASS_HEADING_OFFSET = 10.f;
 
+  static constexpr char const* PREFERENCES_IS_MUTED = "muted";
+
   static Mutex<Data>::Guard the();
+
+  void initialize();
 
   void update_battery_voltage(uint32_t voltage);
   void update_inertial_measurements(Vector3 accel, Vector3 gyro, Vector3 mag);
