@@ -105,7 +105,7 @@ HomeScreen::HomeScreen()
   DATA_EVENT_LISTENER(
       HomeScreen,
       [](Data::Event e, HomeScreen* home_screen) {
-        if (e != Data::Event::EnvironmentDataUpdated)
+        if (e != Data::Event::BatteryChargeUpdated)
           return;
         home_screen->update();
       },

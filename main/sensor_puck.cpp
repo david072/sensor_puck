@@ -562,8 +562,6 @@ extern "C" void app_main() {
   };
   ESP_ERROR_CHECK(i2c_new_master_bus(&lcd_i2c_config, &g_lcd_i2c_handle));
 
-  load_measurements_from_ulp();
-
   g_nfc = new St25dv16kc(g_i2c_handle);
 
   if (did_initialize_ulp_riscv && ulp_update_nfc_data_only &&
@@ -577,6 +575,7 @@ extern "C" void app_main() {
     safely_stop_ulp_riscv();
     ESP_LOGI("Setup", "Updating NFC data while staying silent");
 
+    load_measurements_from_ulp();
     recover_from_sleep();
     update_nfc_data();
     ulp_update_nfc_data_only = false;
@@ -590,6 +589,7 @@ extern "C" void app_main() {
   ESP_LOGI("Setup", "Initialize display");
   init_display();
 
+  load_measurements_from_ulp();
   recover_from_sleep();
 
   if (did_initialize_ulp_riscv) {

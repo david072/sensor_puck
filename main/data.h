@@ -46,6 +46,7 @@ ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
 class Data {
 public:
   enum Event : i32 {
+    BatteryChargeUpdated,
     EnvironmentDataUpdated,
     TimeChanged,
     UserTimerStarted,

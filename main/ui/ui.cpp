@@ -154,17 +154,6 @@ Page::Page(lv_obj_t* parent, u32 update_period) {
 
   lv_timer_set_repeat_count(m_update_timer, -1);
 
-  // m_update_timer waits for it's period to be over before calling update()
-  // the first time. By registering this additional timer, we can make the LVGL
-  // task call update() immediately when it runs. By having the LVGL task do
-  // this, we avoid any potential deadlocks if update() wants to access Data.
-  auto immediate_update_timer = lv_timer_create(
-      [](lv_timer_t* timer) {
-        static_cast<Page*>(lv_timer_get_user_data(timer))->update();
-      },
-      0, this);
-  lv_timer_set_repeat_count(immediate_update_timer, 1);
-
   lv_obj_add_event_cb(
       m_container,
       [](lv_event_t* event) {

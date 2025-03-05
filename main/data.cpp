@@ -132,7 +132,8 @@ void Data::update_battery_voltage(uint32_t voltage) {
       round((voltage - MIN_BATTERY_VOLTAGE) /
             (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
   m_battery_percentage = MIN(m_battery_percentage, (uint8_t)100);
-  post_environment_data_updated_event();
+  esp_event_post(DATA_EVENT_BASE, Data::Event::BatteryChargeUpdated, NULL, 0,
+                 10);
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
