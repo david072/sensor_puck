@@ -84,6 +84,10 @@ public:
 
     lv_style_t const* container() const { return &m_container; }
     lv_style_t const* button() const { return &m_button; }
+    lv_style_t const* checkbox_main() const { return &m_checkbox_main; }
+    lv_style_t const* checkbox_indicator() const {
+      return &m_checkbox_indicator;
+    }
 
     lv_style_t const* headline1() const { return &m_headline1; }
     lv_style_t const* headline2() const { return &m_headline2; }
@@ -102,6 +106,8 @@ public:
 
     lv_style_t m_container;
     lv_style_t m_button;
+    lv_style_t m_checkbox_main;
+    lv_style_t m_checkbox_indicator;
 
     lv_style_t m_headline1;
     lv_style_t m_headline2;
@@ -170,5 +176,6 @@ lv_obj_t* flex_container(lv_obj_t* parent = nullptr);
 lv_obj_t* text_button(lv_obj_t* parent, char const* text,
                       lv_event_cb_t on_short_click, void* user_data);
 lv_obj_t* fullscreen_back_button(lv_obj_t* parent);
+lv_obj_t* checkbox(lv_obj_t* parent);
 
 } // namespace ui

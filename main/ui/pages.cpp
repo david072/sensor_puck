@@ -40,6 +40,17 @@ HomeScreen::HomeScreen()
     lv_obj_align(m_battery_percentage, LV_ALIGN_TOP_MID, 0, 15);
   }
 
+  // status icons
+  {
+    m_muted_icon = caption(page_container());
+    lv_obj_set_style_text_color(m_muted_icon,
+                                ui::Ui::the().style().colors.on_background, 0);
+    lv_label_set_text(m_muted_icon, LV_SYMBOL_MUTE);
+    lv_obj_align(m_muted_icon, LV_ALIGN_TOP_MID, -50, 18);
+  }
+
+  update_status_icons();
+
   // pages
   {
     m_pages_container = flex_container(page_container());
@@ -105,7 +116,10 @@ HomeScreen::HomeScreen()
   DATA_EVENT_LISTENER(
       HomeScreen,
       [](Data::Event e, HomeScreen* home_screen) {
-        if (e != Data::Event::BatteryChargeUpdated)
+        if (e == Data::Event::StatusUpdated) {
+          home_screen->update_status_icons();
+          return;
+        } else if (e != Data::Event::BatteryChargeUpdated)
           return;
         home_screen->update();
       },
@@ -133,6 +147,11 @@ void HomeScreen::update() {
   lv_label_set_text_fmt(m_battery_percentage, format, battery_percentage);
 
 #undef MAKE_FORMAT
+}
+
+void HomeScreen::update_status_icons() {
+  auto d = Data::the();
+  lv_obj_set_style_opa(m_muted_icon, d->muted() ? LV_OPA_100 : LV_OPA_0, 0);
 }
 
 void HomeScreen::on_pages_container_scroll() {
@@ -165,6 +184,7 @@ SettingsScreen::SettingsScreen()
   lv_obj_set_scroll_dir(cont, LV_DIR_VER);
   lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START,
                         LV_FLEX_ALIGN_START);
+  lv_obj_add_flag(cont, LV_OBJ_FLAG_OVERFLOW_VISIBLE);
 
   auto list_item = [](lv_obj_t* parent, char const* icon, char const* label,
                       lv_event_cb_t on_click, void* user_data) {
@@ -203,6 +223,20 @@ SettingsScreen::SettingsScreen()
         Ui::the().enter_fullscreen(NULL, new DateSettingsScreen());
       },
       NULL);
+  divider(cont);
+
+  auto* cb = checkbox(cont);
+  lv_checkbox_set_text_static(cb, "Mute");
+  if (Data::the()->muted())
+    lv_obj_add_state(cb, LV_STATE_CHECKED);
+  lv_obj_add_event_cb(
+      cb,
+      [](lv_event_t* e) {
+        auto muted =
+            lv_obj_has_state(lv_event_get_target_obj(e), LV_STATE_CHECKED);
+        Data::the()->set_muted(muted);
+      },
+      LV_EVENT_VALUE_CHANGED, NULL);
 }
 
 SettingsScreen::DateSettingsScreen::DateSettingsScreen()

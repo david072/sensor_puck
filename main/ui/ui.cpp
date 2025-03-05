@@ -51,6 +51,20 @@ Ui::Style::Style()
   }
 
   {
+    lv_style_init(&m_checkbox_main);
+    lv_style_set_pad_column(&m_checkbox_main, 15);
+    lv_style_set_pad_ver(&m_checkbox_main, 10);
+    lv_style_set_text_font(&m_checkbox_main, &font_montagu_slab_20);
+
+    lv_style_init(&m_checkbox_indicator);
+    lv_style_set_text_font(&m_checkbox_indicator, &font_montagu_slab_16);
+    lv_style_set_bg_color(&m_checkbox_indicator, colors.primary);
+    lv_style_set_bg_color(&m_checkbox_indicator, colors.primary);
+    lv_style_set_border_opa(&m_checkbox_indicator, LV_OPA_0);
+    lv_style_set_pad_all(&m_checkbox_indicator, -1);
+  }
+
+  {
     lv_style_init(&m_headline1);
     lv_style_set_text_color(&m_headline1, colors.on_background);
     lv_style_set_text_font(&m_headline1, &font_montagu_slab_40);
@@ -212,6 +226,16 @@ lv_obj_t* fullscreen_back_button(lv_obj_t* parent) {
   lv_obj_set_style_radius(button, 0, 0);
 
   return button;
+}
+
+lv_obj_t* checkbox(lv_obj_t* parent) {
+  auto* cb = lv_checkbox_create(parent);
+  lv_obj_add_style(cb, Ui::the().style().checkbox_main(), LV_PART_MAIN);
+  lv_obj_add_style(cb, Ui::the().style().checkbox_indicator(),
+                   LV_PART_INDICATOR);
+  lv_obj_add_style(cb, Ui::the().style().checkbox_indicator(),
+                   LV_PART_INDICATOR | LV_STATE_CHECKED);
+  return cb;
 }
 
 lv_obj_t* headline1(lv_obj_t* parent) {

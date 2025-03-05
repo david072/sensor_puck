@@ -48,6 +48,7 @@ public:
   enum Event : i32 {
     BatteryChargeUpdated,
     EnvironmentDataUpdated,
+    StatusUpdated,
     TimeChanged,
     UserTimerStarted,
     UserTimerExpired,
@@ -139,6 +140,9 @@ public:
 
   UserTimer& user_timer() { return m_user_timer; }
 
+  void set_muted(bool muted);
+  bool muted() { return m_muted; }
+
   uint8_t battery_percentage() const { return m_battery_percentage; }
 
   Vector3 const& gyroscope() const { return m_gyroscope; }
@@ -162,6 +166,8 @@ private:
   // Lock m_lvgl_lock;
 
   UserTimer m_user_timer;
+
+  bool m_muted;
 
   uint8_t m_battery_percentage;
 

@@ -132,8 +132,7 @@ void Data::update_battery_voltage(uint32_t voltage) {
       round((voltage - MIN_BATTERY_VOLTAGE) /
             (MAX_BATTERY_VOLTAGE - MIN_BATTERY_VOLTAGE) * 100.f);
   m_battery_percentage = MIN(m_battery_percentage, (uint8_t)100);
-  esp_event_post(DATA_EVENT_BASE, Data::Event::BatteryChargeUpdated, NULL, 0,
-                 10);
+  esp_event_post(DATA_EVENT_BASE, Event::BatteryChargeUpdated, NULL, 0, 10);
 }
 
 void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
@@ -153,6 +152,11 @@ void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
   if (set_down_gesture_detected()) {
     esp_event_post(DATA_EVENT_BASE, Event::SetDownGesture, NULL, 0, 10);
   }
+}
+
+void Data::set_muted(bool muted) {
+  m_muted = muted;
+  esp_event_post(DATA_EVENT_BASE, Event::StatusUpdated, NULL, 0, 10);
 }
 
 bool Data::set_down_gesture_detected() {

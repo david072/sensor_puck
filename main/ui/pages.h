@@ -23,11 +23,13 @@ private:
   static constexpr u32 PAGE_INDICATOR_EDGE_PADDING = 10;
 
   void update() override;
+  void update_status_icons();
 
   void on_pages_container_scroll();
 
   lv_obj_t* m_pages_container;
   lv_obj_t* m_battery_percentage;
+  lv_obj_t* m_muted_icon;
 
   lv_obj_t* m_page_indicators[PAGE_COUNT] = {};
 };

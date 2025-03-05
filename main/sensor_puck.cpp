@@ -265,7 +265,7 @@ void buzzer_task(void* arg) {
     u32 notified_value;
     xTaskNotifyWait(false, ULONG_MAX, &notified_value, portMAX_DELAY);
 
-    if (Data::the()->is_upside_down()) {
+    if (Data::the()->muted() || Data::the()->is_upside_down()) {
       last_co2_beep = esp_timer_get_time();
       continue;
     }
