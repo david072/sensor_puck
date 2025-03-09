@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
 import 'package:sensor_puck_web/sensor_puck_data.dart';
 
 class HomePage extends StatefulWidget {
@@ -26,6 +27,8 @@ class _HomePageState extends State<HomePage> {
       body: SingleChildScrollView(
         child: Column(
           children: [
+            Text(
+                "Updated: ${DateFormat("HH:mm, dd.MM.yyyy").format(sp.lastUpdate)}"),
             SizedBox(
               width: double.infinity,
               child: Card(

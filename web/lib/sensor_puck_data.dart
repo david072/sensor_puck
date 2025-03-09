@@ -28,10 +28,25 @@ void encodeInt16Into(List<int> bytes, int i) {
   bytes.add((value >> 0) & 0xFF);
 }
 
+void encodeInt64Into(List<int> bytes, int i) {
+  var value = i.toSigned(64);
+  for (int i = 56; i >= 0; i -= 8) {
+    bytes.add((value >> i) & 0xFF);
+  }
+}
+
 int decodeInt16(List<int> bytes) {
   var value = Int32.ZERO | (bytes.removeAt(0) << 8) | bytes.removeAt(0);
   // if the top bit is set (i.e. the number is negative), extend the sign bit all the way to the left
   if (value >> 15 > 0) value |= 0xFFFF << 16;
+  return value.toInt();
+}
+
+int decodeInt64(List<int> bytes) {
+  var value = Int64.ZERO;
+  for (int i = 56; i >= 0; i -= 8) {
+    value |= bytes.removeAt(0) << i;
+  }
   return value.toInt();
 }
 
@@ -134,11 +149,19 @@ class SensorPuck {
   final HumidityValue? hum;
   final Iaq iaq;
 
-  SensorPuck({this.co2, this.temp, this.hum})
+  final DateTime lastUpdate;
+
+  SensorPuck({this.co2, this.temp, this.hum, required this.lastUpdate})
       : iaq = Iaq.worst([co2?.iaq(), temp?.iaq(), hum?.iaq()]);
 
   static SensorPuck decode(String b64) {
     var bytes = base64.decode(b64).toList();
+
+    var lastUpdate = DateTime.fromMillisecondsSinceEpoch(
+            decodeInt64(bytes) * 1000,
+            isUtc: true)
+        .toLocal();
+
     Map<SensorPuckValueType, SensorPuckValue> values = {};
     while (bytes.isNotEmpty) {
       var v = SensorPuckValue.decode(bytes);
@@ -150,11 +173,13 @@ class SensorPuck {
       co2: values[SensorPuckValueType.co2] as Co2PpmValue?,
       temp: values[SensorPuckValueType.temperature] as TemperatureValue?,
       hum: values[SensorPuckValueType.humidity] as HumidityValue?,
+      lastUpdate: lastUpdate,
     );
   }
 
   String encode() {
     List<int> bytes = [];
+    encodeInt64Into(bytes, lastUpdate.millisecondsSinceEpoch ~/ 1000);
     co2?.encodeInto(bytes);
     temp?.encodeInto(bytes);
     hum?.encodeInto(bytes);

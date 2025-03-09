@@ -69,20 +69,40 @@ struct DeepSleepTimer {
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 
+template <typename T>
+void num_to_bytes(u8* buf, size_t idx, T num, i64 width) {
+  for (i64 i = width - 8; i >= 0; i -= 8) {
+    buf[idx++] = (num >> i) & 0xFF;
+  }
+}
+
 void update_nfc_data() {
   auto d = Data::the();
 
-#define I16_TO_BYTES(num)                                                      \
-  static_cast<u8>((num >> 8) & 0xFF), static_cast<u8>((num >> 0) & 0xFF)
+#define I16 0x0, 0x0
+#define I32 I16, I16
+#define I64 I32, I32
 
+  auto timestamp = static_cast<i64>(time(NULL));
   auto co2 = d->co2_ppm();
   auto temp = static_cast<i16>(round(d->temperature() * 100.f));
   auto hum = static_cast<i16>(round(d->humidity() * 100.f));
 
   u8 nfc_buf[] = {
-      0x00, I16_TO_BYTES(co2), 0x01, I16_TO_BYTES(temp),
-      0x02, I16_TO_BYTES(hum),
+      I64,       // timestamp
+      0x00, I16, // CO2
+      0x01, I16, // temperature
+      0x02, I16, // humidity
   };
+  num_to_bytes(nfc_buf, 0, timestamp, 64);
+  num_to_bytes(nfc_buf, 9, co2, 16);
+  num_to_bytes(nfc_buf, 12, temp, 16);
+  num_to_bytes(nfc_buf, 15, hum, 16);
+
+#undef I16
+#undef I32
+#undef I64
+
   u8 b64_buf[64];
   size_t b64_buf_len;
   mbedtls_base64_encode(b64_buf, 64, &b64_buf_len, nfc_buf, sizeof(nfc_buf));
