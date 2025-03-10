@@ -1,10 +1,9 @@
 #include "data.h"
 #include <cmath>
-#include <constants.h>
-#include <cstdio>
 #include <esp_log.h>
 #include <preferences.h>
 #include <sys/param.h>
+#include <sys/stat.h>
 #include <sys/time.h>
 
 #include <ble_peripheral_manager.h>
@@ -116,6 +115,32 @@ Mutex<Data>::Guard Data::the() {
 void Data::initialize() {
   m_muted =
       Preferences::instance().get_bool(PREFERENCES_IS_MUTED).value_or(false);
+
+  xTaskCreate(
+      [](void*) {
+        {
+          auto last_history_entry = Data::the()->last_history_entry();
+          if (last_history_entry) {
+            auto elapsed = time(NULL) - last_history_entry->timestamp;
+            auto time_until_next_history_entry =
+                TIME_BETWEEN_HISTORY_ENTRIES_S -
+                (elapsed % TIME_BETWEEN_HISTORY_ENTRIES_S);
+            vTaskDelay(pdMS_TO_TICKS(time_until_next_history_entry * 1000));
+          } else {
+            vTaskDelay(pdMS_TO_TICKS(TIME_BETWEEN_HISTORY_ENTRIES_S * 1000));
+          }
+        }
+
+        while (true) {
+          {
+            Data::the()->update_history();
+          }
+          vTaskDelay(pdMS_TO_TICKS(TIME_BETWEEN_HISTORY_ENTRIES_S * 1000));
+        }
+
+        vTaskDelete(NULL);
+      },
+      "HIST UPDATE", 1024 * 3, NULL, ENV_TASK_PRIORITY, NULL);
 }
 
 void Data::enable_bluetooth() {
@@ -203,13 +228,113 @@ void Data::update_temperature(float temp) {
   m_temperature = temp + TEMPERATURE_OFFSET;
   post_environment_data_updated_event();
 }
+
 void Data::update_humidity(float hum) {
   m_humidity = hum + HUMIDITY_OFFSET;
   post_environment_data_updated_event();
 }
+
 void Data::update_co2_ppm(u16 co2_ppm) {
   m_co2_ppm = co2_ppm;
   post_environment_data_updated_event();
+}
+
+void Data::update_history() {
+  auto save_history_entry = [this](FILE* file = NULL) {
+    if (file == NULL) {
+      file = fopen(HISTORY_FILE_PATH, "ab");
+    }
+
+    RawHistoryEntry e = {
+        .timestamp = time(NULL),
+        .co2_ppm = m_co2_ppm,
+        .temp = static_cast<i16>(round(m_temperature * 100.f)),
+        .hum = static_cast<i16>(round(m_humidity * 100.f)),
+    };
+    fwrite(&e, sizeof(RawHistoryEntry), 1, file);
+    fclose(file);
+  };
+
+  auto* file = fopen(HISTORY_FILE_PATH, "rb");
+
+  if (file == NULL) {
+    save_history_entry();
+    return;
+  }
+
+  fseek(file, 0, SEEK_END);
+  auto size = ftell(file);
+  ESP_LOGI("Data", "History file size: %ld", size);
+  RawHistoryEntry last_entry = {.timestamp = 0};
+  if (size > 0) {
+    fseek(file, size - sizeof(RawHistoryEntry), SEEK_SET);
+    fread(&last_entry, sizeof(RawHistoryEntry), 1, file);
+  }
+
+  if (time(NULL) - last_entry.timestamp >= TIME_BETWEEN_HISTORY_ENTRIES_S) {
+    if (size / sizeof(RawHistoryEntry) >= MAX_HISTORY_ENTRIES) {
+      // remove first element from file
+      RawHistoryEntry buf[MAX_HISTORY_ENTRIES - 1];
+      fseek(file, sizeof(RawHistoryEntry), SEEK_SET);
+      auto read_entries = fread(buf, sizeof(RawHistoryEntry),
+                                sizeof(buf) / sizeof(RawHistoryEntry), file);
+
+      fclose(file);
+      file = fopen(HISTORY_FILE_PATH, "wb");
+      if (file == NULL) {
+        perror("fopen");
+        return;
+      }
+      fwrite(buf, sizeof(RawHistoryEntry), read_entries, file);
+      save_history_entry(file);
+    } else {
+      fclose(file);
+      save_history_entry();
+    }
+  } else {
+    fclose(file);
+  }
+}
+
+std::optional<Data::RawHistoryEntry> Data::last_history_entry() const {
+  auto* file = fopen(HISTORY_FILE_PATH, "rb");
+  if (file == NULL)
+    return std::nullopt;
+
+  fseek(file, -sizeof(RawHistoryEntry), SEEK_END);
+  RawHistoryEntry e;
+  fread(&e, sizeof(RawHistoryEntry), 1, file);
+  fclose(file);
+  return e;
+}
+
+std::vector<Data::HistoryEntry> Data::history() const {
+  auto* file = fopen(HISTORY_FILE_PATH, "rb");
+  if (!file)
+    return {};
+
+  fseek(file, 0, SEEK_END);
+  auto size = ftell(file);
+  fseek(file, 0, SEEK_SET);
+
+  auto entry_count = size / sizeof(RawHistoryEntry);
+  std::vector<HistoryEntry> result;
+  result.resize(entry_count);
+
+  RawHistoryEntry raw_entries[entry_count];
+  fread(raw_entries, sizeof(RawHistoryEntry), entry_count, file);
+  fclose(file);
+
+  for (size_t i = 0; i < entry_count; ++i) {
+    result[i] = {
+        .timestamp = raw_entries[i].timestamp,
+        .co2_ppm = raw_entries[i].co2_ppm,
+        .temp = static_cast<float>(raw_entries[i].temp) / 100.f,
+        .hum = static_cast<float>(raw_entries[i].hum) / 100.f,
+    };
+  }
+
+  return result;
 }
 
 tm Data::get_time() {

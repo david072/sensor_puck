@@ -76,7 +76,7 @@ RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
 RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
 
 template <typename T>
-void num_to_bytes(u8* buf, size_t idx, T num, i64 width) {
+void num_to_bytes(u8* buf, size_t& idx, T num, i64 width) {
   for (i64 i = width - 8; i >= 0; i -= 8) {
     buf[idx++] = (num >> i) & 0xFF;
   }
@@ -85,33 +85,46 @@ void num_to_bytes(u8* buf, size_t idx, T num, i64 width) {
 void update_nfc_data() {
   auto d = Data::the();
 
-#define I16 0x0, 0x0
-#define I32 I16, I16
-#define I64 I32, I32
-
   auto timestamp = static_cast<i64>(time(NULL));
   auto co2 = d->co2_ppm();
   auto temp = static_cast<i16>(round(d->temperature() * 100.f));
   auto hum = static_cast<i16>(round(d->humidity() * 100.f));
 
-  u8 nfc_buf[] = {
-      I64,       // timestamp
-      0x00, I16, // CO2
-      0x01, I16, // temperature
-      0x02, I16, // humidity
-  };
-  num_to_bytes(nfc_buf, 0, timestamp, 64);
-  num_to_bytes(nfc_buf, 9, co2, 16);
-  num_to_bytes(nfc_buf, 12, temp, 16);
-  num_to_bytes(nfc_buf, 15, hum, 16);
+  auto history = d->history();
 
-#undef I16
-#undef I32
-#undef I64
+  // type + current value + history length + history
+  auto property_length = 1 + 2 + 1 + history.size() * 2;
 
-  u8 b64_buf[64];
+  // timestamp + 3 properties (co2, temperature, humidity)
+  u8 nfc_buf[8 + property_length * 3];
+  size_t i = 0;
+  num_to_bytes(nfc_buf, i, timestamp, 64);
+
+  nfc_buf[i++] = 0x00;
+  num_to_bytes(nfc_buf, i, co2, 16);
+  nfc_buf[i++] = static_cast<u8>(history.size());
+  for (auto const& e : history) {
+    num_to_bytes(nfc_buf, i, e.co2_ppm, 16);
+  }
+
+  nfc_buf[i++] = 0x01;
+  num_to_bytes(nfc_buf, i, temp, 16);
+  nfc_buf[i++] = static_cast<u8>(history.size());
+  for (auto const& e : history) {
+    num_to_bytes(nfc_buf, i, static_cast<i16>(round(e.temp * 100.f)), 16);
+  }
+
+  nfc_buf[i++] = 0x02;
+  num_to_bytes(nfc_buf, i, hum, 16);
+  nfc_buf[i++] = static_cast<u8>(history.size());
+  for (auto const& e : history) {
+    num_to_bytes(nfc_buf, i, static_cast<i16>(round(e.hum * 100.f)), 16);
+  }
+
+  u8 b64_buf[512];
   size_t b64_buf_len;
-  mbedtls_base64_encode(b64_buf, 64, &b64_buf_len, nfc_buf, sizeof(nfc_buf));
+  mbedtls_base64_encode(b64_buf, sizeof(b64_buf), &b64_buf_len, nfc_buf,
+                        sizeof(nfc_buf));
 
   // replace characters that are not URL safe
   for (size_t i = 0; i < b64_buf_len; ++i) {
@@ -126,6 +139,7 @@ void update_nfc_data() {
   uri.append((char*)b64_buf, b64_buf_len);
 
   auto record = nfc::build_ndef_uri_record(nfc::UriPrefix::Https, uri);
+  ESP_LOGI("NFC", "Writing record of length %d", record.length);
   g_nfc->write_ndef_record(record);
   nfc::free_ndef_record(record);
 }

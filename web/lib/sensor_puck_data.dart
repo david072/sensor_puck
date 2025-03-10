@@ -4,6 +4,9 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:fixnum/fixnum.dart';
 
+const int maxHistoryEntries = 48;
+const int timeBetweenHistoryEntriesSec = 10;
+
 enum Iaq {
   excellent("Excellent", Colors.green),
   fine("Fine", Colors.lightGreen),
@@ -60,23 +63,31 @@ enum SensorPuckValueType {
   final int value;
 }
 
-sealed class SensorPuckValue {
+sealed class SensorPuckValue<T> {
+  final T value;
+  final List<T> history = [];
+
   final String unit;
   final SensorPuckValueType type;
 
-  const SensorPuckValue(this.unit, this.type);
+  SensorPuckValue(this.value, this.unit, this.type);
 
   static SensorPuckValue? decode(List<int> bytes) {
+    SensorPuckValue result;
     var type = bytes.removeAt(0);
-    if (type == SensorPuckValueType.co2.value) return Co2PpmValue.decode(bytes);
-    if (type == SensorPuckValueType.temperature.value) {
-      return TemperatureValue.decode(bytes);
-    }
-    if (type == SensorPuckValueType.humidity.value) {
-      return HumidityValue.decode(bytes);
+    if (type == SensorPuckValueType.co2.value) {
+      result = Co2PpmValue.decode(bytes);
+    } else if (type == SensorPuckValueType.temperature.value) {
+      result = TemperatureValue.decode(bytes);
+    } else if (type == SensorPuckValueType.humidity.value) {
+      result = HumidityValue.decode(bytes);
+    } else {
+      return null;
     }
 
-    return null;
+    var historyLength = bytes.removeAt(0);
+    result._decodeHistory(bytes, historyLength);
+    return result;
   }
 
   int get encodedLength => 4;
@@ -86,60 +97,109 @@ sealed class SensorPuckValue {
   void encodeInto(List<int> bytes) {
     bytes.add(type.value);
     _encodeContentInto(bytes);
+    bytes.add(history.length & 0xFF);
+    _encodeHistoryInto(bytes);
   }
 
   void _encodeContentInto(List<int> bytes);
+  void _encodeHistoryInto(List<int> bytes);
+
+  void _decodeHistory(List<int> bytes, int length);
 }
 
-class Co2PpmValue extends SensorPuckValue {
-  final int ppm;
-
-  const Co2PpmValue(this.ppm) : super("ppm", SensorPuckValueType.co2);
+class Co2PpmValue extends SensorPuckValue<int> {
+  Co2PpmValue(int ppm) : super(ppm, "ppm", SensorPuckValueType.co2);
 
   static Co2PpmValue decode(List<int> bytes) => Co2PpmValue(decodeInt16(bytes));
 
   @override
-  Iaq? iaq() => switch (ppm) {
-        _ when ppm <= 400 => Iaq.excellent,
-        _ when ppm <= 1000 => Iaq.fine,
-        _ when ppm <= 1500 => Iaq.moderate,
-        _ when ppm <= 2000 => Iaq.poor,
-        _ when ppm <= 5000 => Iaq.veryPoor,
+  Iaq? iaq() => switch (value) {
+        _ when value <= 400 => Iaq.excellent,
+        _ when value <= 1000 => Iaq.fine,
+        _ when value <= 1500 => Iaq.moderate,
+        _ when value <= 2000 => Iaq.poor,
+        _ when value <= 5000 => Iaq.veryPoor,
         _ => Iaq.severe,
       };
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt16Into(bytes, ppm);
+    encodeInt16Into(bytes, value);
+  }
+
+  @override
+  void _encodeHistoryInto(List<int> bytes) {
+    for (int ppm in history) {
+      encodeInt16Into(bytes, ppm);
+    }
+  }
+
+  @override
+  void _decodeHistory(List<int> bytes, int length) {
+    for (int i = 0; i < length; ++i) {
+      history.add(decodeInt16(bytes));
+    }
   }
 }
 
-class TemperatureValue extends SensorPuckValue {
-  final double temperature;
+class TemperatureValue extends SensorPuckValue<double> {
+  TemperatureValue(double temp)
+      : super(temp, "°C", SensorPuckValueType.temperature);
 
-  const TemperatureValue(this.temperature)
-      : super("°C", SensorPuckValueType.temperature);
+  static void _encodeValueInto(List<int> bytes, double temp) =>
+      encodeInt16Into(bytes, (temp * 100).round());
+  static double _decodeValue(List<int> bytes) => decodeInt16(bytes) / 100;
 
   static TemperatureValue decode(List<int> bytes) =>
-      TemperatureValue(decodeInt16(bytes) / 100);
+      TemperatureValue(_decodeValue(bytes));
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt16Into(bytes, (temperature * 100).round());
+    _encodeValueInto(bytes, value);
+  }
+
+  @override
+  void _encodeHistoryInto(List<int> bytes) {
+    for (double temp in history) {
+      _encodeValueInto(bytes, temp);
+    }
+  }
+
+  @override
+  void _decodeHistory(List<int> bytes, int length) {
+    for (int i = 0; i < length; ++i) {
+      history.add(_decodeValue(bytes));
+    }
   }
 }
 
-class HumidityValue extends SensorPuckValue {
-  final double humidity;
+class HumidityValue extends SensorPuckValue<double> {
+  HumidityValue(double hum) : super(hum, "%", SensorPuckValueType.humidity);
 
-  const HumidityValue(this.humidity) : super("%", SensorPuckValueType.humidity);
+  static void _encodeValueInto(List<int> bytes, double temp) =>
+      encodeInt16Into(bytes, (temp * 100).round());
+  static double _decodeValue(List<int> bytes) => decodeInt16(bytes) / 100;
 
   static HumidityValue decode(List<int> bytes) =>
-      HumidityValue(decodeInt16(bytes) / 100);
+      HumidityValue(_decodeValue(bytes));
 
   @override
   void _encodeContentInto(List<int> bytes) {
-    encodeInt16Into(bytes, (humidity * 100).round());
+    encodeInt16Into(bytes, (value * 100).round());
+  }
+
+  @override
+  void _encodeHistoryInto(List<int> bytes) {
+    for (double hum in history) {
+      _encodeValueInto(bytes, hum);
+    }
+  }
+
+  @override
+  void _decodeHistory(List<int> bytes, int length) {
+    for (int i = 0; i < length; ++i) {
+      history.add(_decodeValue(bytes));
+    }
   }
 }
 

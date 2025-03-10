@@ -1,5 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
-import 'package:intl/intl.dart';
+import 'package:intl/intl.dart' hide TextDirection;
 import 'package:sensor_puck_web/sensor_puck_data.dart';
 
 class HomePage extends StatefulWidget {
@@ -51,24 +53,9 @@ class _HomePageState extends State<HomePage> {
               shrinkWrap: true,
               crossAxisCount: 2,
               children: [
-                if (sp.co2 != null)
-                  _ValueCard(
-                    value: sp.co2!.ppm.toStringAsFixed(0),
-                    unit: sp.co2!.unit,
-                    iaq: sp.co2!.iaq(),
-                  ),
-                if (sp.temp != null)
-                  _ValueCard(
-                    value: sp.temp!.temperature.toStringAsFixed(2),
-                    unit: sp.temp!.unit,
-                    iaq: sp.temp!.iaq(),
-                  ),
-                if (sp.hum != null)
-                  _ValueCard(
-                    value: sp.hum!.humidity.toStringAsFixed(2),
-                    unit: sp.hum!.unit,
-                    iaq: sp.hum!.iaq(),
-                  ),
+                if (sp.co2 != null) _ValueCard(value: sp.co2!),
+                if (sp.temp != null) _ValueCard(value: sp.temp!),
+                if (sp.hum != null) _ValueCard(value: sp.hum!),
               ],
             ),
           ],
@@ -78,62 +65,139 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _ValueCard extends StatelessWidget {
-  const _ValueCard({
-    required this.value,
-    required this.unit,
-    this.iaq,
-  });
+class _ValueCard<T extends num> extends StatelessWidget {
+  const _ValueCard({required this.value});
 
-  final String value;
-  final String unit;
-  final Iaq? iaq;
+  final SensorPuckValue<T> value;
 
   @override
   Widget build(BuildContext context) {
+    var iaq = value.iaq();
     return Card(
-      child: Stack(
-        alignment: Alignment.bottomCenter,
-        children: [
-          if (iaq != null)
-            Container(
-              width: double.infinity,
-              margin: const EdgeInsets.all(5),
-              padding: const EdgeInsets.all(5),
-              decoration: BoxDecoration(
-                color: iaq!.color,
-                borderRadius: BorderRadius.circular(7.0),
+      clipBehavior: Clip.antiAlias,
+      child: CustomPaint(
+        painter: HistoryPainter(
+          value: value,
+          graphColor: Color(0xFF353535),
+          textColor: Theme.of(context).colorScheme.onBackground.withAlpha(180),
+        ),
+        child: Stack(
+          alignment: Alignment.bottomCenter,
+          children: [
+            if (iaq != null)
+              Container(
+                width: double.infinity,
+                // margin: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: iaq.color,
+                  borderRadius: BorderRadius.circular(12.0),
+                ),
+                child: Text(
+                  iaq.name,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodySmall
+                      ?.copyWith(color: Colors.black),
+                ),
               ),
-              child: Text(
-                iaq!.name,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodySmall
-                    ?.copyWith(color: Colors.black),
-              ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  "${value.value}",
+                  style: Theme.of(context)
+                      .textTheme
+                      .displayLarge
+                      ?.copyWith(fontWeight: FontWeight.bold),
+                ),
+                Text(
+                  value.unit,
+                  style: Theme.of(context)
+                      .textTheme
+                      .bodyLarge
+                      ?.copyWith(color: Theme.of(context).hintColor),
+                ),
+              ],
             ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Text(
-                value,
-                style: Theme.of(context)
-                    .textTheme
-                    .displayLarge
-                    ?.copyWith(fontWeight: FontWeight.bold),
-              ),
-              Text(
-                unit,
-                style: Theme.of(context)
-                    .textTheme
-                    .bodyLarge
-                    ?.copyWith(color: Theme.of(context).hintColor),
-              ),
-            ],
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+}
+
+class HistoryPainter<T extends num> extends CustomPainter {
+  const HistoryPainter({
+    required this.value,
+    required this.graphColor,
+    required this.textColor,
+  });
+
+  final SensorPuckValue<T> value;
+  final Color graphColor;
+  final Color textColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    var history = value.history.where((v) => v.abs() != 0).toList();
+    // make sure 0 is in the range [bottomValue; topValue]
+    var topValue = max(history.reduce((a, b) => max(a, b)) * 1.2, 0);
+    var bottomValue = min(history.reduce((a, b) => min(a, b)) * 0.8, 0);
+
+    double valueToY(T value) {
+      return (1 - (value - bottomValue) / (topValue - bottomValue)) *
+          size.height;
+    }
+
+    var graphPaint = Paint()..color = graphColor;
+    var textPaint = Paint()
+      ..color = textColor
+      ..strokeWidth = 1;
+
+    var points = [
+      for (int i = 0; i < history.length; i++)
+        Offset((size.width / (history.length - 1)) * i, valueToY(history[i]))
+    ];
+
+    points.add(Offset(size.width, valueToY(0 as T)));
+    points.add(Offset(0, valueToY(0 as T)));
+
+    canvas.drawPath(Path()..addPolygon(points, true), graphPaint);
+
+    var currentValueY = valueToY(value.value);
+    canvas.drawLine(
+      Offset(0, currentValueY),
+      Offset(size.width, currentValueY),
+      textPaint,
+    );
+
+    var textStyle = TextStyle(color: textColor, fontSize: 12);
+    var nowTextPainter = TextPainter(
+      text: TextSpan(text: "${value.value} ${value.unit}", style: textStyle),
+      textDirection: TextDirection.ltr,
+    );
+    nowTextPainter.layout();
+    nowTextPainter.paint(
+        canvas, Offset(0, currentValueY - nowTextPainter.height));
+
+    canvas.drawLine(Offset(size.width / 2, 0),
+        Offset(size.width / 2, size.height), textPaint);
+
+    void drawTextAnchorTopLeft(Offset offset, String text) {
+      TextPainter(
+        text: TextSpan(text: text, style: textStyle),
+        textDirection: TextDirection.ltr,
+      )
+        ..layout()
+        ..paint(canvas, offset);
+    }
+
+    drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4), "4m ago");
+    drawTextAnchorTopLeft(Offset(4, 4), "8m ago");
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }

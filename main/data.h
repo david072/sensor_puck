@@ -1,7 +1,8 @@
 #pragma once
 
+#include <constants.h>
 #include <cstdint>
-
+#include <cstdio>
 #include <ctime>
 #include <esp_event.h>
 #include <freertos/FreeRTOS.h>
@@ -11,6 +12,7 @@
 #include <sync.h>
 #include <types.h>
 #include <util.h>
+#include <vector>
 
 class UserTimer {
 public:
@@ -114,7 +116,25 @@ public:
   /// Angle the compass heading is rotated by.
   static constexpr float COMPASS_HEADING_OFFSET = 10.f;
 
+  static constexpr char const* HISTORY_FILE_PATH = BASE_PATH "/history";
+  static constexpr i64 TIME_BETWEEN_HISTORY_ENTRIES_S = 30 * 60;
+  static constexpr size_t MAX_HISTORY_ENTRIES = 24;
+
   static constexpr char const* PREFERENCES_IS_MUTED = "muted";
+
+  struct RawHistoryEntry {
+    i64 timestamp;
+    u16 co2_ppm;
+    i16 temp;
+    i16 hum;
+  };
+
+  struct HistoryEntry {
+    i64 timestamp;
+    u16 co2_ppm;
+    float temp;
+    float hum;
+  };
 
   static Mutex<Data>::Guard the();
 
@@ -158,6 +178,8 @@ public:
   float humidity() const { return m_humidity; }
   u16 co2_ppm() const { return m_co2_ppm; }
 
+  std::vector<HistoryEntry> history() const;
+
   bool is_upside_down() const;
 
 private:
@@ -166,6 +188,9 @@ private:
     return millis() - m_sdg_cooldown >=
            SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS;
   }
+
+  void update_history();
+  std::optional<RawHistoryEntry> last_history_entry() const;
 
   // Lock m_lvgl_lock;
 
