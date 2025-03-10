@@ -116,8 +116,14 @@ St25dv16kc::St25dv16kc(i2c_master_bus_handle_t i2c_handle) {
 }
 
 void St25dv16kc::write_ndef_record(nfc::NdefRecord record) {
-  write(m_user_device, sizeof(CC_FILE), record.data, record.length);
-  vTaskDelay(pdMS_TO_TICKS(50));
+  for (size_t address = 0; address < record.length;
+       address += MAX_WRITE_LENGTH) {
+    auto bytes_to_write = std::min(MAX_WRITE_LENGTH, record.length - address);
+    ESP_LOGI("ST25DV", "Writing %d..%d", address, address + bytes_to_write);
+    write(m_user_device, address + sizeof(CC_FILE), &record.data[address],
+          bytes_to_write);
+    vTaskDelay(pdMS_TO_TICKS(50));
+  }
 }
 
 void St25dv16kc::write(i2c_master_dev_handle_t device, u16 address,

@@ -6,8 +6,6 @@
 
 namespace nfc {
 
-void build_cc_file(u16 memory_size);
-
 enum class UriPrefix : u8 {
   HttpsWww = 0x01,
   Https = 0x04,
@@ -51,6 +49,8 @@ private:
   static constexpr u16 SYSTEM_MEMORY_ADDRESS = st25dv::device_address(1, 1);
   static constexpr u16 RF_ON_ADDRESS = st25dv::device_address(0, 0);
   static constexpr u16 RF_OFF_ADDRESS = st25dv::device_address(1, 0);
+
+  static constexpr size_t MAX_WRITE_LENGTH = 255;
 
   static constexpr u16 REG_SECURITY_PASSWORD_START = 0x0900;
   static constexpr u16 REG_SECURITY_SESSION_STATUS = 0x2004;
