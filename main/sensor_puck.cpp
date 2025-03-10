@@ -12,12 +12,15 @@
 #include <esp_log.h>
 #include <esp_sleep.h>
 #include <esp_task_wdt.h>
+#include <esp_vfs.h>
+#include <esp_vfs_fat.h>
 #include <lis2mdl.h>
 #include <lsm6dsox.h>
 #include <lvgl.h>
 #include <mbedtls/base64.h>
 #include <scd41.h>
 #include <st25dv.h>
+#include <stdio.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
 #include <ulp_riscv.h>
@@ -47,11 +50,14 @@ constexpr u32 BEEP_COUNT = 2;
 constexpr i64 MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 5 * 60 * 1000; // 5min
 constexpr i64 BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 1 * 60 * 1000;      // 1min
 
-constexpr u32 NFC_DATA_UPDATE_INTERVAL_MS = 30 * 1000;
+constexpr u32 NFC_DATA_UPDATE_INTERVAL_MS = 10 * 1000;
 constexpr char const* NFC_URL_ADDRESS = "sensor-puck.web.app?d=";
 
 i2c_master_bus_handle_t g_i2c_handle;
 i2c_master_bus_handle_t g_lcd_i2c_handle;
+
+/// Handle to the wear leveling library.
+static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
 
 St25dv16kc* g_nfc;
 Bm8563* g_rtc;
@@ -583,7 +589,22 @@ extern "C" void app_main() {
   ESP_ERROR_CHECK(i2c_new_master_bus(&lcd_i2c_config, &g_lcd_i2c_handle));
 
   initialize_nvs_flash();
+
+  ESP_LOGI("Setup", "Mounting FAT filesystem");
+  esp_vfs_fat_mount_config_t mount_config = {
+      .format_if_mount_failed = true,
+      .max_files = 4,
+      .allocation_unit_size = CONFIG_WL_SECTOR_SIZE,
+      .use_one_fat = false,
+  };
+  ESP_ERROR_CHECK(esp_vfs_fat_spiflash_mount_rw_wl(
+      BASE_PATH, "storage", &mount_config, &s_wl_handle));
+  ESP_LOGI("Setup", "Filesystem mounted!");
+
   Data::the()->initialize();
+
+  g_rtc = new Bm8563(g_lcd_i2c_handle);
+  update_system_time_from_rtc();
 
   g_nfc = new St25dv16kc(g_i2c_handle);
 
@@ -626,9 +647,6 @@ extern "C" void app_main() {
   }
 
   init_display_touch(g_lcd_i2c_handle);
-
-  g_rtc = new Bm8563(g_lcd_i2c_handle);
-  update_system_time_from_rtc();
 
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::TimeChanged,

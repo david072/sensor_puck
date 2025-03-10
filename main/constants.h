@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <types.h>
 
+#define BASE_PATH "/home"
+
 #define USING_CUSTOM_PCB true
 
 static constexpr u32 DEEP_SLEEP_DISPLAY_INACTIVITY_MS = 60 * 1000;
