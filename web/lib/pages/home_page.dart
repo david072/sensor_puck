@@ -141,7 +141,8 @@ class HistoryPainter<T extends num> extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    var history = value.history.where((v) => v.abs() != 0).toList();
+    var history = value.history;
+
     // make sure 0 is in the range [bottomValue; topValue]
     var topValue = max(history.reduce((a, b) => max(a, b)) * 1.2, 0);
     var bottomValue = min(history.reduce((a, b) => min(a, b)) * 0.8, 0);
@@ -158,32 +159,19 @@ class HistoryPainter<T extends num> extends CustomPainter {
 
     var points = [
       for (int i = 0; i < history.length; i++)
-        Offset((size.width / (history.length - 1)) * i, valueToY(history[i]))
+        Offset((size.width / history.length) * i, valueToY(history[i]))
     ];
 
+    points.add(Offset(size.width, valueToY(value.value)));
     points.add(Offset(size.width, valueToY(0 as T)));
     points.add(Offset(0, valueToY(0 as T)));
 
     canvas.drawPath(Path()..addPolygon(points, true), graphPaint);
 
-    var currentValueY = valueToY(value.value);
-    canvas.drawLine(
-      Offset(0, currentValueY),
-      Offset(size.width, currentValueY),
-      textPaint,
-    );
-
     var textStyle = TextStyle(color: textColor, fontSize: 12);
-    var nowTextPainter = TextPainter(
-      text: TextSpan(text: "${value.value} ${value.unit}", style: textStyle),
-      textDirection: TextDirection.ltr,
-    );
-    nowTextPainter.layout();
-    nowTextPainter.paint(
-        canvas, Offset(0, currentValueY - nowTextPainter.height));
 
-    canvas.drawLine(Offset(size.width / 2, 0),
-        Offset(size.width / 2, size.height), textPaint);
+    canvas.drawLine(
+        Offset(size.width / 2, 0), Offset(size.width / 2, 20), textPaint);
 
     void drawTextAnchorTopLeft(Offset offset, String text) {
       TextPainter(
@@ -194,8 +182,8 @@ class HistoryPainter<T extends num> extends CustomPainter {
         ..paint(canvas, offset);
     }
 
-    drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4), "4m ago");
-    drawTextAnchorTopLeft(Offset(4, 4), "8m ago");
+    drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4), "6h ago");
+    drawTextAnchorTopLeft(Offset(4, 4), "12h ago");
   }
 
   @override

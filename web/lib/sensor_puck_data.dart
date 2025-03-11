@@ -72,7 +72,7 @@ sealed class SensorPuckValue<T> {
 
   SensorPuckValue(this.value, this.unit, this.type);
 
-  static SensorPuckValue? decode(List<int> bytes) {
+  static SensorPuckValue? decode(List<int> bytes, int historyLength) {
     SensorPuckValue result;
     var type = bytes.removeAt(0);
     if (type == SensorPuckValueType.co2.value) {
@@ -85,7 +85,6 @@ sealed class SensorPuckValue<T> {
       return null;
     }
 
-    var historyLength = bytes.removeAt(0);
     result._decodeHistory(bytes, historyLength);
     return result;
   }
@@ -222,9 +221,14 @@ class SensorPuck {
             isUtc: true)
         .toLocal();
 
+    var historyLength = bytes.removeAt(0);
+    if (historyLength > 0) {
+      var historyOffset = bytes.removeAt(0);
+    }
+
     Map<SensorPuckValueType, SensorPuckValue> values = {};
     while (bytes.isNotEmpty) {
-      var v = SensorPuckValue.decode(bytes);
+      var v = SensorPuckValue.decode(bytes, historyLength);
       if (v == null) continue;
       values[v.type] = v;
     }

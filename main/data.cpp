@@ -264,7 +264,7 @@ void Data::update_history() {
 
   fseek(file, 0, SEEK_END);
   auto size = ftell(file);
-  ESP_LOGI("Data", "History file size: %ld", size);
+  ESP_LOGI("Data", "History file size: %ld bytes", size);
   RawHistoryEntry last_entry = {.timestamp = 0};
   if (size > 0) {
     fseek(file, size - sizeof(RawHistoryEntry), SEEK_SET);

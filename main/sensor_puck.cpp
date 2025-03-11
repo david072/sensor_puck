@@ -99,24 +99,28 @@ void update_nfc_data() {
   u8 nfc_buf[8 + property_length * 3];
   size_t i = 0;
   num_to_bytes(nfc_buf, i, timestamp, 64);
+  nfc_buf[i++] = static_cast<u8>(history.size());
+
+  if (!history.empty()) {
+    auto history_offset_min = std::min(
+        (timestamp - history[history.size() - 1].timestamp) / 60, (i64)0xFF);
+    nfc_buf[i++] = static_cast<u8>(history_offset_min);
+  }
 
   nfc_buf[i++] = 0x00;
   num_to_bytes(nfc_buf, i, co2, 16);
-  nfc_buf[i++] = static_cast<u8>(history.size());
   for (auto const& e : history) {
     num_to_bytes(nfc_buf, i, e.co2_ppm, 16);
   }
 
   nfc_buf[i++] = 0x01;
   num_to_bytes(nfc_buf, i, temp, 16);
-  nfc_buf[i++] = static_cast<u8>(history.size());
   for (auto const& e : history) {
     num_to_bytes(nfc_buf, i, static_cast<i16>(round(e.temp * 100.f)), 16);
   }
 
   nfc_buf[i++] = 0x02;
   num_to_bytes(nfc_buf, i, hum, 16);
-  nfc_buf[i++] = static_cast<u8>(history.size());
   for (auto const& e : history) {
     num_to_bytes(nfc_buf, i, static_cast<i16>(round(e.hum * 100.f)), 16);
   }
