@@ -77,19 +77,21 @@ class _ValueCard<T extends num> extends StatelessWidget {
     return Card(
       clipBehavior: Clip.antiAlias,
       child: CustomPaint(
-        painter: HistoryPainter(
-          value: value,
-          graphColor: Color(0xFF353535),
-          textColor: Theme.of(context).colorScheme.onBackground.withAlpha(180),
-        ),
+        painter: value.history.isNotEmpty
+            ? HistoryPainter(
+                value: value,
+                graphColor: Color(0xFF353535),
+                textColor:
+                    Theme.of(context).colorScheme.onBackground.withAlpha(180),
+              )
+            : null,
         child: Stack(
           alignment: Alignment.bottomCenter,
           children: [
             if (iaq != null)
               Container(
                 width: double.infinity,
-                // margin: const EdgeInsets.all(5),
-                padding: const EdgeInsets.all(5),
+                padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
                   color: iaq.color,
                   borderRadius: BorderRadius.circular(12.0),
