@@ -5,7 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:fixnum/fixnum.dart';
 
 const int maxHistoryEntries = 48;
-const int timeBetweenHistoryEntriesSec = 10;
+const Duration timeBetweenHistoryEntries = Duration(minutes: 30);
 
 enum Iaq {
   excellent("Excellent", Colors.green),

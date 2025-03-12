@@ -147,8 +147,10 @@ class HistoryPainter<T extends num> extends CustomPainter {
     var history = value.history;
 
     // make sure 0 is in the range [bottomValue; topValue]
-    var topValue = max(history.reduce((a, b) => max(a, b)) * 1.2, 0);
-    var bottomValue = min(history.reduce((a, b) => min(a, b)) * 0.8, 0);
+    var historyWithCurrent = [...history, value.value];
+    var topValue = max(historyWithCurrent.reduce((a, b) => max(a, b)) * 1.2, 0);
+    var bottomValue =
+        min(historyWithCurrent.reduce((a, b) => min(a, b)) * 0.8, 0);
 
     double valueToY(T value) {
       return (1 - (value - bottomValue) / (topValue - bottomValue)) *
@@ -185,8 +187,21 @@ class HistoryPainter<T extends num> extends CustomPainter {
         ..paint(canvas, offset);
     }
 
-    drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4), "6h ago");
-    drawTextAnchorTopLeft(Offset(4, 4), "12h ago");
+    var entireGraphDuration = timeBetweenHistoryEntries * history.length;
+
+    String formatDuration(Duration dur) {
+      if (dur.inHours > 0) {
+        return "${dur.inHours}h";
+      } else if (dur.inMinutes > 0) {
+        return "${dur.inMinutes}min";
+      }
+      return "${dur.inSeconds}s";
+    }
+
+    drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4),
+        "${formatDuration(entireGraphDuration ~/ 2)} ago");
+    drawTextAnchorTopLeft(
+        Offset(4, 4), "${formatDuration(entireGraphDuration)} ago");
   }
 
   @override
