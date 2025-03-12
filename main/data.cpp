@@ -122,10 +122,11 @@ void Data::initialize() {
           auto last_history_entry = Data::the()->last_history_entry();
           if (last_history_entry) {
             auto elapsed = time(NULL) - last_history_entry->timestamp;
-            auto time_until_next_history_entry =
-                TIME_BETWEEN_HISTORY_ENTRIES_S -
-                (elapsed % TIME_BETWEEN_HISTORY_ENTRIES_S);
-            vTaskDelay(pdMS_TO_TICKS(time_until_next_history_entry * 1000));
+            if (elapsed < TIME_BETWEEN_HISTORY_ENTRIES_S) {
+              auto time_until_next_history_entry =
+                  TIME_BETWEEN_HISTORY_ENTRIES_S - elapsed;
+              vTaskDelay(pdMS_TO_TICKS(time_until_next_history_entry * 1000));
+            }
           } else {
             vTaskDelay(pdMS_TO_TICKS(TIME_BETWEEN_HISTORY_ENTRIES_S * 1000));
           }

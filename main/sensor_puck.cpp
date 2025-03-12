@@ -23,10 +23,6 @@
 #include <stdio.h>
 #include <ui/pages.h>
 #include <ui/ui.h>
-#include <ulp_riscv.h>
-#include <ulp_riscv_app.h>
-#include <ulp_riscv_i2c.h>
-#include <ulp_riscv_lock.h>
 #include <vector>
 
 // some include in this file fucks the compiler so hard omg
@@ -34,10 +30,7 @@
 
 #define SCD_LOW_POWER false
 
-extern const u8 ulp_riscv_bin_start[] asm("_binary_ulp_riscv_app_bin_start");
-extern const u8 ulp_riscv_bin_end[] asm("_binary_ulp_riscv_app_bin_end");
-
-constexpr u32 ULP_RISCV_WAKEUP_PERIOD_US = 60 * 1000 * 1000;
+constexpr u64 WAKEUP_PERIOD_MS = 60 * 1000;
 
 constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 ENV_READ_INTERVAL_MS = 5 * 1000;
@@ -61,6 +54,7 @@ static wl_handle_t s_wl_handle = WL_INVALID_HANDLE;
 
 St25dv16kc* g_nfc;
 Bm8563* g_rtc;
+Scd41* g_scd;
 
 /// If the user timer duration is <= this value, we don't go to sleep and
 /// instead wait for the timer to expire.
@@ -73,7 +67,16 @@ struct DeepSleepTimer {
 };
 
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
-RTC_DATA_ATTR bool did_initialize_ulp_riscv = false;
+
+struct EnvironmentData {
+  bool has_values = false;
+  u16 co2;
+  float temperature;
+  float humidity;
+};
+
+RTC_DATA_ATTR EnvironmentData rtc_env_data = {};
+RTC_DATA_ATTR bool rtc_check_env_only = false;
 
 template <typename T>
 void num_to_bytes(u8* buf, size_t& idx, T num, i64 width) {
@@ -156,15 +159,28 @@ void update_nfc_data_if_necessary() {
   update_nfc_data();
 }
 
+bool read_environment_sensors() {
+  auto data = Data::the();
+  auto scd_data = g_scd->read();
+
+  if (scd_data) {
+    data->update_temperature(scd_data->temperature);
+    data->update_humidity(scd_data->humidity);
+    data->update_co2_ppm(scd_data->co2);
+
+    rtc_env_data.has_values = true;
+    rtc_env_data.co2 = scd_data->co2;
+    rtc_env_data.temperature = scd_data->temperature;
+    rtc_env_data.humidity = scd_data->humidity;
+    return true;
+  } else {
+    ESP_LOGW("SCD41", "Failed reading sensor!");
+    return false;
+  }
+}
+
 void environment_read_task(void* arg) {
   DeepSleepPreparation deep_sleep;
-
-  Scd41 scd(g_i2c_handle);
-#if SCD_LOW_POWER
-  scd.start_low_power_periodic_measurement();
-#else
-  scd.start_periodic_measurement();
-#endif
 
   Battery battery(BATTERY_READ_PIN);
 
@@ -172,33 +188,15 @@ void environment_read_task(void* arg) {
 
   while (true) {
     {
-      auto data = Data::the();
-      auto scd_data = scd.read();
-
-      if (scd_data) {
-        data->update_temperature(scd_data->temperature);
-        data->update_humidity(scd_data->humidity);
-        data->update_co2_ppm(scd_data->co2);
-
-        ulp_last_co2_measurement = scd_data->co2;
-        ulp_last_temperature_measurement = std::bit_cast<u32>(
-            static_cast<i32>(scd_data->temperature * 1000.f));
-        ulp_last_humidity_measurement =
-            std::bit_cast<u32>(static_cast<i32>(scd_data->humidity * 1000.f));
-      } else {
-        ESP_LOGW("SCD41", "Failed reading sensor!");
-      }
-
-      data->update_battery_voltage(battery.read_voltage());
+      read_environment_sensors();
+      Data::the()->update_battery_voltage(battery.read_voltage());
     }
 
     update_nfc_data_if_necessary();
 
     if (deep_sleep.wait_for_event(pdMS_TO_TICKS(ENV_READ_INTERVAL_MS))) {
       ESP_LOGI("ENV", "Powering down...");
-      scd.power_down();
-      // bme.power_down();
-
+      g_scd->power_down();
       deep_sleep.ready();
       break;
     }
@@ -404,36 +402,6 @@ bool can_sleep() {
   return !ui::Ui::the().in_fullscreen() && !Data::bluetooth_enabled();
 }
 
-void initialize_ulp_i2c() {
-  // taken from ULP_RISCV_I2C_DEFAULT_CONFIG() but THE FUCKING COMPILER IS MAD
-  // ABOUT THE NESTED DESIGNATORS AAAAAAAAAAAAAAAAAAAAAAAH
-  ulp_riscv_i2c_cfg_t i2c_cfg = {
-      .i2c_pin_cfg =
-          {
-              .sda_io_num = GPIO_NUM_3,
-              .scl_io_num = GPIO_NUM_2,
-              .sda_pullup_en = true,
-              .scl_pullup_en = true,
-          },
-      .i2c_timing_cfg =
-          {
-              .scl_low_period = 1.4,
-              .scl_high_period = 0.3,
-              .sda_duty_period = 1,
-              .scl_start_period = 2,
-              .scl_stop_period = 1.3,
-              .i2c_trans_timeout = 20,
-          },
-  };
-  i2c_cfg.i2c_pin_cfg = ulp_riscv_i2c_pin_cfg_t{
-      .sda_io_num = B_SDA,
-      .scl_io_num = B_SCL,
-      .sda_pullup_en = false,
-      .scl_pullup_en = false,
-  };
-  ESP_ERROR_CHECK(ulp_riscv_i2c_master_init(&i2c_cfg));
-}
-
 /// Saves states where necessary, sets up wakeup sources and enters deep sleep.
 /// This function does not return!
 void enter_deep_sleep(bool sparse = false) {
@@ -453,6 +421,9 @@ void enter_deep_sleep(bool sparse = false) {
                         true, true, pdMS_TO_TICKS(1000));
   }
 
+  esp_sleep_enable_timer_wakeup(WAKEUP_PERIOD_MS * 1000);
+  rtc_check_env_only = true;
+
   {
     auto d = Data::the();
 
@@ -463,9 +434,13 @@ void enter_deep_sleep(bool sparse = false) {
           d->user_timer().original_duration_ms();
       deep_sleep_timer.remaining_timer_duration =
           d->user_timer().remaining_duration_ms();
-      esp_sleep_enable_timer_wakeup(
-          static_cast<uint64_t>(d->user_timer().remaining_duration_ms()) *
-          1000);
+
+      if (d->user_timer().remaining_duration_ms() <= WAKEUP_PERIOD_MS) {
+        rtc_check_env_only = false;
+        esp_sleep_enable_timer_wakeup(
+            static_cast<uint64_t>(d->user_timer().remaining_duration_ms()) *
+            1000);
+      }
     } else {
       deep_sleep_timer = DeepSleepTimer{};
     }
@@ -477,33 +452,9 @@ void enter_deep_sleep(bool sparse = false) {
     }
   }
 
-  ulp_update_nfc_data_only = 0;
-  ulp_times_ran = 0;
-  ulp_wake_threshold_ppm = BAD_CO2_PPM_LEVEL;
-  initialize_ulp_i2c();
-  ulp_timer_resume();
-  ESP_ERROR_CHECK(ulp_riscv_run());
-
   ESP_ERROR_CHECK(rtc_gpio_pullup_en(DP_TOUCH_INT));
   ESP_ERROR_CHECK(esp_sleep_enable_ext0_wakeup(DP_TOUCH_INT, 0));
-  ESP_ERROR_CHECK(esp_sleep_enable_ulp_wakeup());
   esp_deep_sleep_start();
-}
-
-void load_measurements_from_ulp() {
-  if (!did_initialize_ulp_riscv)
-    return;
-
-  auto ulp_last_co2 = static_cast<u16>(ulp_last_co2_measurement);
-  auto ulp_last_temp =
-      static_cast<float>(std::bit_cast<i32>(ulp_last_temperature_measurement)) /
-      1000.f;
-  auto ulp_last_hum =
-      static_cast<float>(std::bit_cast<i32>(ulp_last_humidity_measurement)) /
-      1000.f;
-  Data::the()->update_co2_ppm(ulp_last_co2);
-  Data::the()->update_temperature(ulp_last_temp);
-  Data::the()->update_humidity(ulp_last_hum);
 }
 
 void recover_from_sleep() {
@@ -530,40 +481,13 @@ void recover_from_sleep() {
   deep_sleep_timer = DeepSleepTimer{};
 }
 
-void initialize_ulp_riscv() {
-  if (did_initialize_ulp_riscv)
+void pull_rtc_environment_data() {
+  if (!rtc_env_data.has_values)
     return;
-
-  ESP_ERROR_CHECK(ulp_riscv_load_binary(
-      ulp_riscv_bin_start, ulp_riscv_bin_end - ulp_riscv_bin_start));
-  ESP_ERROR_CHECK(ulp_set_wakeup_period(0, ULP_RISCV_WAKEUP_PERIOD_US));
-  did_initialize_ulp_riscv = true;
-}
-
-/// Taken from
-/// https://github.com/espressif/esp-idf/blob/67c1de1eebe095d554d281952fde63c16ee2dca0/components/ulp/ulp_riscv/ulp_core/ulp_riscv_lock.c#L9
-///
-/// Adapted to reset the task watchdog to avoid it triggering while waiting for
-/// the lock.
-void ulp_riscv_lock_acquire_wdt_aware(ulp_riscv_lock_t* lock) {
-  lock->critical_section_flag_ulp = true;
-  lock->turn = ULP_RISCV_LOCK_TURN_MAIN_CPU;
-
-  auto start = esp_timer_get_time();
-  while (lock->critical_section_flag_main_cpu &&
-         (lock->turn == ULP_RISCV_LOCK_TURN_MAIN_CPU)) {
-    esp_task_wdt_reset();
-  }
-
-  ESP_LOGI("ULP", "Acquiring ULP RISC-V lock took %lldms",
-           (esp_timer_get_time() - start) / 1000);
-}
-
-void safely_stop_ulp_riscv() {
-  ulp_riscv_lock_acquire_wdt_aware((ulp_riscv_lock_t*)&ulp_lock);
-  ulp_riscv_timer_stop();
-  ulp_riscv_halt();
-  ulp_riscv_lock_release((ulp_riscv_lock_t*)&ulp_lock);
+  auto d = Data::the();
+  d->update_co2_ppm(rtc_env_data.co2);
+  d->update_temperature(rtc_env_data.temperature);
+  d->update_humidity(rtc_env_data.humidity);
 }
 
 extern "C" void app_main() {
@@ -626,43 +550,34 @@ extern "C" void app_main() {
 
   g_nfc = new St25dv16kc(g_i2c_handle);
 
-  if (did_initialize_ulp_riscv && ulp_update_nfc_data_only &&
-      esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_ULP) {
-    // I technically don't want to stop the ULP here, but it somehow doesn't run
-    // anymore otherwise. Also, the ESP-IDF docs say that deep sleep wakeup
-    // sources are not disabled after wakeup, however if we don't re-enable them
-    // here, e.g. waking up by touching the display doesn't work anymore?? This
-    // means we have to be careful to recover the timer and everything here,
-    // otherwise we will not be woken up for it again.
-    safely_stop_ulp_riscv();
-    ESP_LOGI("Setup", "Updating NFC data while staying silent");
+  if (rtc_check_env_only &&
+      esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
+    ESP_LOGI("Setup", "Checking env while staying silent...");
 
-    load_measurements_from_ulp();
+    g_scd = new Scd41(g_i2c_handle);
+#if SCD_LOW_POWER
+    scd.start_low_power_periodic_measurement();
+#else
+    g_scd->start_periodic_measurement();
+#endif
+
     recover_from_sleep();
+    while (!read_environment_sensors())
+      vTaskDelay(pdMS_TO_TICKS(5500));
+
     update_nfc_data();
-    ulp_update_nfc_data_only = false;
 
     enter_deep_sleep(true);
     return;
   }
 
-  xTaskCreate(buzzer_task, "BUZZER", 2048, NULL, MISC_TASK_PRIORITY, NULL);
+  xTaskCreate(buzzer_task, "Buzzer", 2048, NULL, MISC_TASK_PRIORITY, NULL);
 
   ESP_LOGI("Setup", "Initialize display");
   init_display();
 
-  load_measurements_from_ulp();
+  pull_rtc_environment_data();
   recover_from_sleep();
-
-  if (did_initialize_ulp_riscv) {
-    // Ensure only the main CPU or the ULP COCPU are accessing the I2C bus and
-    // wait if the ULP is currently using it. Also, since we're running now, we
-    // can just stop the ULP. Since we have the lock, we can
-    // safely tell it to halt without interfering with the running program.
-    ESP_LOGI("Setup", "Waiting for ULP COCPU to release lock...");
-    safely_stop_ulp_riscv();
-    ESP_LOGI("Setup", "Stopped ULP COCPU");
-  }
 
   init_display_touch(g_lcd_i2c_handle);
 
@@ -678,7 +593,7 @@ extern "C" void app_main() {
               set_rtc_time(utc_time);
               vTaskDelete(NULL);
             },
-            "TCE to RTC", 4 * 2048, NULL, 1, NULL);
+            "Update RTC", 4 * 2048, NULL, 1, NULL);
       },
       NULL);
 
@@ -698,13 +613,20 @@ extern "C" void app_main() {
       },
       NULL);
 
+  g_scd = new Scd41(g_i2c_handle);
+#if SCD_LOW_POWER
+  scd.start_low_power_periodic_measurement();
+#else
+  g_scd->start_periodic_measurement();
+#endif
+
   ESP_LOGI("Setup", "Starting sensor tasks");
   xTaskCreate(environment_read_task, "ENV SENS", ENV_TASK_STACK_SIZE, NULL,
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);
 
-  initialize_ulp_riscv();
+  ESP_LOGI("Setup", "Wakeup cause: %d", esp_sleep_get_wakeup_cause());
 
   ESP_LOGI("Setup", "Setup finished successfully!");
 }

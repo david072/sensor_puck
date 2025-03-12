@@ -5,5 +5,3 @@ idf_component_register(
     "ui/ui.cpp" "ui/pages.cpp"
   INCLUDE_DIRS "."
 )
-
-ulp_add_project("ulp_riscv_app" "${CMAKE_SOURCE_DIR}/main/ulp_riscv/")
