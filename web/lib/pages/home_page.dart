@@ -31,6 +31,7 @@ class _HomePageState extends State<HomePage> {
           children: [
             Text(
                 "Updated: ${DateFormat("HH:mm, dd.MM.yyyy").format(sp.lastUpdate)}"),
+            Text("History offset: ${sp.historyOffset.inMinutes}min"),
             SizedBox(
               width: double.infinity,
               child: Card(

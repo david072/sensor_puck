@@ -209,9 +209,15 @@ class SensorPuck {
   final Iaq iaq;
 
   final DateTime lastUpdate;
+  final Duration historyOffset;
 
-  SensorPuck({this.co2, this.temp, this.hum, required this.lastUpdate})
-      : iaq = Iaq.worst([co2?.iaq(), temp?.iaq(), hum?.iaq()]);
+  SensorPuck({
+    this.co2,
+    this.temp,
+    this.hum,
+    required this.lastUpdate,
+    required this.historyOffset,
+  }) : iaq = Iaq.worst([co2?.iaq(), temp?.iaq(), hum?.iaq()]);
 
   static SensorPuck decode(String b64) {
     var bytes = base64.decode(b64).toList();
@@ -222,8 +228,9 @@ class SensorPuck {
         .toLocal();
 
     var historyLength = bytes.removeAt(0);
+    var historyOffset = Duration.zero;
     if (historyLength > 0) {
-      var historyOffset = bytes.removeAt(0);
+      historyOffset = Duration(minutes: bytes.removeAt(0));
     }
 
     Map<SensorPuckValueType, SensorPuckValue> values = {};
@@ -238,6 +245,7 @@ class SensorPuck {
       temp: values[SensorPuckValueType.temperature] as TemperatureValue?,
       hum: values[SensorPuckValueType.humidity] as HumidityValue?,
       lastUpdate: lastUpdate,
+      historyOffset: historyOffset,
     );
   }
 
