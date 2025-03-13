@@ -567,6 +567,7 @@ extern "C" void app_main() {
 
     update_nfc_data();
 
+    g_scd->power_down();
     enter_deep_sleep(true);
     return;
   }
