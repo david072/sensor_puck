@@ -193,12 +193,16 @@ void Data::set_muted(bool muted) {
 }
 
 bool Data::set_down_gesture_detected() {
-  if (m_acceleration.y >= SDG_COOLDOWN_ACCELERATION_THRESHOLD &&
-      sdg_cooldown_exceeded()) {
+  if (m_disable_sdg_detection)
+    return false;
+
+  auto acc = -m_acceleration - GRAVITATIONAL_ACCELERATION.y;
+
+  if (acc.y >= SDG_COOLDOWN_ACCELERATION_THRESHOLD && sdg_cooldown_exceeded()) {
     m_sdg_cooldown = millis();
   }
 
-  if (-m_acceleration.y >= SDG_DOWNWARDS_ACCELERATION_THRESHOLD &&
+  if (-acc.y >= SDG_DOWNWARDS_ACCELERATION_THRESHOLD &&
       sdg_cooldown_exceeded()) {
     if (millis() - m_set_down_gesture_start >
         SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS) {
@@ -209,13 +213,13 @@ bool Data::set_down_gesture_detected() {
   auto elapsed = millis() - m_set_down_gesture_start;
 
   if (elapsed <= SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS &&
-      abs(m_acceleration.y) <= SDG_END_ACCELERATION) {
+      abs(acc.y) <= SDG_END_ACCELERATION) {
     m_set_down_gesture_start = 0;
     elapsed = millis() - m_set_down_gesture_start;
   }
 
   if (elapsed <= SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS) {
-    if (abs(m_acceleration.y) <= SDG_END_ACCELERATION) {
+    if (abs(acc.y) <= SDG_END_ACCELERATION) {
       ESP_LOGI("Data", "Detected SDG after %ld ms", elapsed);
       m_set_down_gesture_start = 0;
       return true;

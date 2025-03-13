@@ -95,7 +95,7 @@ public:
   static constexpr float SDG_END_ACCELERATION = 0.5;
   /// Minimum time for vertical acceleration to return back to
   /// SDG_END_ACCELERATION
-  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS = 180;
+  static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MIN_DURATION_MS = 80;
   /// Maximum time for vertical acceleration to return back to
   /// SDG_END_ACCELERATION
   static constexpr ulong SDG_DOWNWARDS_ACCELERATION_MAX_DURATION_MS = 300;
@@ -180,6 +180,9 @@ public:
 
   std::vector<HistoryEntry> history() const;
 
+  void disable_sdg_detection() { m_disable_sdg_detection = true; }
+  void enable_sdg_detection() { m_disable_sdg_detection = false; }
+
   bool is_upside_down() const;
 
 private:
@@ -220,6 +223,8 @@ private:
 
   float m_sdg_cooldown = 0;
   u32 m_set_down_gesture_start = 0;
+
+  bool m_disable_sdg_detection = false;
 
   /// °C
   float m_temperature = 0;

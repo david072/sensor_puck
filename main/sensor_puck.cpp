@@ -273,11 +273,16 @@ void initialize_buzzer_ledc() {
   ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
 }
 
-void buzzer_beep(u32 duration_ms) {
-  ESP_ERROR_CHECK(ledc_timer_rst(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
-  ESP_ERROR_CHECK(ledc_timer_resume(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
-  vTaskDelay(pdMS_TO_TICKS(duration_ms));
-  ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+void buzzer_beep(u32 beep_duration_ms, u32 pause_duration_ms, size_t count) {
+  { Data::the()->disable_sdg_detection(); }
+  for (size_t i = 0; i < count; ++i) {
+    ESP_ERROR_CHECK(ledc_timer_rst(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+    ESP_ERROR_CHECK(ledc_timer_resume(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+    vTaskDelay(pdMS_TO_TICKS(beep_duration_ms));
+    ESP_ERROR_CHECK(ledc_timer_pause(BUZZER_LEDC_MODE, BUZZER_LEDC_TIMER));
+    vTaskDelay(pdMS_TO_TICKS(pause_duration_ms));
+  }
+  { Data::the()->enable_sdg_detection(); }
 }
 
 void buzzer_task(void* arg) {
@@ -334,20 +339,16 @@ void buzzer_task(void* arg) {
         }
       }
 
-      for (size_t i = 0; i < BEEP_COUNT; ++i) {
-        buzzer_beep(BEEP_DURATION_MS);
-        vTaskDelay(pdMS_TO_TICKS(BEEP_DURATION_MS));
-      }
+      buzzer_beep(BEEP_DURATION_MS, BEEP_DURATION_MS, BEEP_COUNT);
 
       last_co2_beep = esp_timer_get_time();
     env_data_updated_end:
     }
 
     if ((notified_value & USER_TIMER_EXPIRED_BIT) != 0) {
-      for (size_t i = 0; i < ui::TimerPage::BLINK_TIMER_REPEAT_COUNT; ++i) {
-        buzzer_beep(ui::TimerPage::BLINK_TIMER_PERIOD_MS);
-        vTaskDelay(pdMS_TO_TICKS(ui::TimerPage::BLINK_TIMER_PERIOD_MS));
-      }
+      buzzer_beep(ui::TimerPage::BLINK_TIMER_PERIOD_MS,
+                  ui::TimerPage::BLINK_TIMER_PERIOD_MS,
+                  ui::TimerPage::BLINK_TIMER_REPEAT_COUNT);
     }
   }
 
