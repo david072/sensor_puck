@@ -95,33 +95,39 @@ void update_nfc_data() {
 
   auto history = d->history();
 
-  // type + current value + history length + history
-  auto property_length = 1 + 2 + 1 + history.size() * 2;
+  // type + current value + history
+  auto property_length = 1 + 2 + history.size() * 2;
 
-  // timestamp + 3 properties (co2, temperature, humidity)
-  u8 nfc_buf[8 + property_length * 3];
+  // timestamp + history length + history time offset (if possible) + 3
+  // properties (co2, temperature, humidity)
+  u8 nfc_buf[8 + 1 + (history.empty() ? 0 : 1) + property_length * 3];
   size_t i = 0;
+  // timestamp
   num_to_bytes(nfc_buf, i, timestamp, 64);
-  nfc_buf[i++] = static_cast<u8>(history.size());
 
+  // history length and history time offset
+  nfc_buf[i++] = static_cast<u8>(history.size());
   if (!history.empty()) {
     auto history_offset_min = std::min(
         (timestamp - history[history.size() - 1].timestamp) / 60, (i64)0xFF);
     nfc_buf[i++] = static_cast<u8>(history_offset_min);
   }
 
+  // CO2 property
   nfc_buf[i++] = 0x00;
   num_to_bytes(nfc_buf, i, co2, 16);
   for (auto const& e : history) {
     num_to_bytes(nfc_buf, i, e.co2_ppm, 16);
   }
 
+  // temperature property
   nfc_buf[i++] = 0x01;
   num_to_bytes(nfc_buf, i, temp, 16);
   for (auto const& e : history) {
     num_to_bytes(nfc_buf, i, static_cast<i16>(round(e.temp * 100.f)), 16);
   }
 
+  // humidity property
   nfc_buf[i++] = 0x02;
   num_to_bytes(nfc_buf, i, hum, 16);
   for (auto const& e : history) {
