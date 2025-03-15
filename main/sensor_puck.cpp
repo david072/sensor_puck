@@ -467,6 +467,9 @@ void enter_deep_sleep(bool sparse = false) {
 void recover_from_sleep() {
   switch (esp_sleep_get_wakeup_cause()) {
   case ESP_SLEEP_WAKEUP_TIMER: {
+    if (rtc_check_env_only)
+      break;
+
     ESP_LOGI("Setup", "Woken up by timer");
     Data::the()->user_timer().recover(deep_sleep_timer.original_timer_duration,
                                       0);
@@ -574,9 +577,11 @@ extern "C" void app_main() {
 
     update_nfc_data();
 
-    g_scd->power_down();
-    enter_deep_sleep(true);
-    return;
+    if (Data::the()->co2_ppm() < BAD_CO2_PPM_LEVEL) {
+      g_scd->power_down();
+      enter_deep_sleep(true);
+      return;
+    }
   }
 
   xTaskCreate(buzzer_task, "Buzzer", 2048, NULL, MISC_TASK_PRIORITY, NULL);
@@ -621,12 +626,14 @@ extern "C" void app_main() {
       },
       NULL);
 
-  g_scd = new Scd41(g_i2c_handle);
+  if (!g_scd) {
+    g_scd = new Scd41(g_i2c_handle);
 #if SCD_LOW_POWER
-  scd.start_low_power_periodic_measurement();
+    scd.start_low_power_periodic_measurement();
 #else
-  g_scd->start_periodic_measurement();
+    g_scd->start_periodic_measurement();
 #endif
+  }
 
   ESP_LOGI("Setup", "Starting sensor tasks");
   xTaskCreate(environment_read_task, "ENV SENS", ENV_TASK_STACK_SIZE, NULL,
