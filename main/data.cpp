@@ -127,15 +127,26 @@ void Data::initialize() {
                   TIME_BETWEEN_HISTORY_ENTRIES_S - elapsed;
               vTaskDelay(pdMS_TO_TICKS(time_until_next_history_entry * 1000));
             }
-          } else {
-            vTaskDelay(pdMS_TO_TICKS(TIME_BETWEEN_HISTORY_ENTRIES_S * 1000));
           }
         }
 
+        // wait for data to be available before adding a history entry
+        esp_event_handler_t handler = [](void* user_data, esp_event_base_t, i32,
+                                         void*) {
+          xTaskNotify(static_cast<TaskHandle_t>(user_data), 1,
+                      eSetValueWithOverwrite);
+        };
+
+        esp_event_handler_register(DATA_EVENT_BASE,
+                                   Data::Event::EnvironmentDataUpdated, handler,
+                                   xTaskGetCurrentTaskHandle());
+        ulTaskNotifyTake(true, portMAX_DELAY);
+        esp_event_handler_unregister(
+            DATA_EVENT_BASE, Data::Event::EnvironmentDataUpdated, handler);
+
         while (true) {
-          {
-            Data::the()->update_history();
-          }
+          ESP_LOGI("Data", "Updating history");
+          { Data::the()->update_history(); }
           vTaskDelay(pdMS_TO_TICKS(TIME_BETWEEN_HISTORY_ENTRIES_S * 1000));
         }
 
