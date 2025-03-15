@@ -146,11 +146,12 @@ class HistoryPainter<T extends num> extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     var history = value.history;
 
-    // make sure 0 is in the range [bottomValue; topValue]
     var historyWithCurrent = [...history, value.value];
-    var topValue = max(historyWithCurrent.reduce((a, b) => max(a, b)) * 1.2, 0);
-    var bottomValue =
-        min(historyWithCurrent.reduce((a, b) => min(a, b)) * 0.8, 0);
+    var historyMax = historyWithCurrent.reduce(max);
+    var historyMin = historyWithCurrent.reduce(min);
+    // make sure 0 is in the range [bottomValue; topValue]
+    var topValue = max(historyMax * 1.2, 0);
+    var bottomValue = min(historyMin * 0.8, 0);
 
     double valueToY(T value) {
       return (1 - (value - bottomValue) / (topValue - bottomValue)) *
@@ -175,9 +176,6 @@ class HistoryPainter<T extends num> extends CustomPainter {
 
     var textStyle = TextStyle(color: textColor, fontSize: 12);
 
-    canvas.drawLine(
-        Offset(size.width / 2, 0), Offset(size.width / 2, 20), textPaint);
-
     void drawTextAnchorTopLeft(Offset offset, String text) {
       TextPainter(
         text: TextSpan(text: text, style: textStyle),
@@ -198,6 +196,8 @@ class HistoryPainter<T extends num> extends CustomPainter {
       return "${dur.inSeconds}s";
     }
 
+    canvas.drawLine(
+        Offset(size.width / 2, 0), Offset(size.width / 2, 20), textPaint);
     drawTextAnchorTopLeft(Offset(size.width / 2 + 4, 4),
         "${formatDuration(entireGraphDuration ~/ 2)} ago");
     drawTextAnchorTopLeft(
