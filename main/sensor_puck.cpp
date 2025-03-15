@@ -500,6 +500,29 @@ void pull_rtc_environment_data() {
   d->update_humidity(rtc_env_data.humidity);
 }
 
+/// Performs the periodic environment check and returns true if the device
+/// should go back to sleep. While performing the check, it monitors whether a
+/// task notification arrived, which acts as an interrupt and causes the
+/// function to return false early.
+bool perform_environment_check_with_notification_interrupt() {
+  if (ulTaskNotifyTake(false, 0) != 0)
+    return false;
+
+  recover_from_sleep();
+  while (!read_environment_sensors()) {
+    if (ulTaskNotifyTake(false, pdMS_TO_TICKS(5500)) != 0) {
+      return false;
+    }
+  }
+
+  update_nfc_data();
+
+  if (Data::the()->co2_ppm() >= BAD_CO2_PPM_LEVEL)
+    return false;
+
+  return true;
+}
+
 extern "C" void app_main() {
   // https://www.freertos.org/Documentation/02-Kernel/02-Kernel-features/06-Event-groups#:~:text=The%20number%20of%20bits%20(or%20flags)%20stored%20within%20an%20event%20group%20is%208%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%201%2C%20or%2024%20if%20configUSE_16_BIT_TICKS%20is%20set%20to%200.
   auto ds_counter_max = configUSE_16_BIT_TICKS ? 8 : 24;
@@ -564,6 +587,19 @@ extern "C" void app_main() {
       esp_sleep_get_wakeup_cause() == ESP_SLEEP_WAKEUP_TIMER) {
     ESP_LOGI("Setup", "Checking env while staying silent...");
 
+    gpio_set_intr_type(DP_TOUCH_INT, GPIO_INTR_NEGEDGE);
+    gpio_install_isr_service(0);
+    gpio_isr_handler_add(
+        DP_TOUCH_INT,
+        [](void* task) {
+          BaseType_t higher_priority_task_woken = 0;
+          xTaskNotifyFromISR(static_cast<TaskHandle_t>(task), 1,
+                             eSetValueWithOverwrite,
+                             &higher_priority_task_woken);
+          portYIELD_FROM_ISR(higher_priority_task_woken);
+        },
+        xTaskGetCurrentTaskHandle());
+
     g_scd = new Scd41(g_i2c_handle);
 #if SCD_LOW_POWER
     scd.start_low_power_periodic_measurement();
@@ -571,17 +607,13 @@ extern "C" void app_main() {
     g_scd->start_periodic_measurement();
 #endif
 
-    recover_from_sleep();
-    while (!read_environment_sensors())
-      vTaskDelay(pdMS_TO_TICKS(5500));
-
-    update_nfc_data();
-
-    if (Data::the()->co2_ppm() < BAD_CO2_PPM_LEVEL) {
+    if (perform_environment_check_with_notification_interrupt()) {
       g_scd->power_down();
       enter_deep_sleep(true);
       return;
     }
+
+    gpio_isr_handler_remove(DP_TOUCH_INT);
   }
 
   xTaskCreate(buzzer_task, "Buzzer", 2048, NULL, MISC_TASK_PRIORITY, NULL);
