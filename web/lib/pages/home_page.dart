@@ -4,6 +4,10 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart' hide TextDirection;
 import 'package:sensor_puck_web/sensor_puck_data.dart';
 
+String toStringAsFixedWithoutTrailingZeroes(double d, int fractionDigits) => d
+    .toStringAsFixed(fractionDigits)
+    .replaceAll(RegExp(r"([.]*0)(?!.*\d)"), "");
+
 class HomePage extends StatefulWidget {
   const HomePage({super.key, required this.b64Data});
 
@@ -189,7 +193,8 @@ class HistoryPainter<T extends num> extends CustomPainter {
 
     String formatDuration(Duration dur) {
       if (dur.inHours > 0) {
-        return "${dur.inHours}h";
+        var hours = dur.inMinutes / 60;
+        return "${toStringAsFixedWithoutTrailingZeroes(hours, 1)}h";
       } else if (dur.inMinutes > 0) {
         return "${dur.inMinutes}min";
       }
