@@ -11,6 +11,7 @@
 #include <nvs_flash.h>
 #include <sync.h>
 #include <types.h>
+#include <ui/ui.h>
 #include <util.h>
 #include <vector>
 
@@ -42,6 +43,25 @@ constexpr float battery_voltage_to_measured_voltage(float v) {
   constexpr float R2 = 470000.f;
   return (v * 1000.f / (R1 + R2)) * R2;
 }
+
+class Iaq {
+public:
+  static Iaq Excellent;
+  static Iaq Fine;
+  static Iaq Moderate;
+  static Iaq Poor;
+  static Iaq VeryPoor;
+  static Iaq Severe;
+
+  constexpr Iaq(u8 index, lv_color_t color, bool is_light_color)
+      : index(index),
+        color(color),
+        is_light_color(is_light_color) {}
+
+  u8 const index;
+  lv_color_t const color;
+  bool const is_light_color;
+};
 
 ESP_EVENT_DECLARE_BASE(DATA_EVENT_BASE);
 
@@ -177,6 +197,8 @@ public:
   float temperature() const { return m_temperature; }
   float humidity() const { return m_humidity; }
   u16 co2_ppm() const { return m_co2_ppm; }
+
+  Iaq iaq() const;
 
   std::vector<HistoryEntry> history() const;
 

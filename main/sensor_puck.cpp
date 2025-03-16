@@ -326,10 +326,10 @@ void buzzer_task(void* arg) {
     if ((notified_value & ENVIRONMENT_DATA_UPDATED_BIT) != 0) {
       auto co2 = Data::the()->co2_ppm();
 
-      if (co2 < MEDIOCRE_CO2_PPM_LEVEL)
+      if (co2 < FINE_CO2_PPM_LIMIT)
         goto env_data_updated_end;
 
-      if (co2 >= MEDIOCRE_CO2_PPM_LEVEL && co2 < BAD_CO2_PPM_LEVEL) {
+      if (co2 >= FINE_CO2_PPM_LIMIT && co2 < POOR_CO2_PPM_LIMIT) {
         if (last_co2_beep > 0 &&
             esp_timer_get_time() - last_co2_beep <
                 MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
@@ -337,7 +337,7 @@ void buzzer_task(void* arg) {
         }
       }
 
-      if (co2 >= BAD_CO2_PPM_LEVEL) {
+      if (co2 >= POOR_CO2_PPM_LIMIT) {
         if (last_co2_beep > 0 &&
             esp_timer_get_time() - last_co2_beep <
                 BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
@@ -517,7 +517,7 @@ bool perform_environment_check_with_notification_interrupt() {
 
   update_nfc_data();
 
-  if (Data::the()->co2_ppm() >= BAD_CO2_PPM_LEVEL)
+  if (Data::the()->co2_ppm() >= POOR_CO2_PPM_LIMIT)
     return false;
 
   return true;

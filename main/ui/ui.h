@@ -73,6 +73,7 @@ public:
     struct Colors {
       lv_color_t background;
       lv_color_t on_background;
+      lv_color_t on_light_background;
 
       lv_color_t primary;
       lv_color_t secondary;

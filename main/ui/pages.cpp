@@ -655,7 +655,24 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
   lv_obj_set_flex_flow(page_container(), LV_FLEX_FLOW_COLUMN);
   lv_obj_set_flex_align(page_container(), LV_FLEX_ALIGN_CENTER,
                         LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_CENTER);
-  lv_obj_set_style_pad_row(page_container(), 10, 0);
+  lv_obj_set_style_pad_row(page_container(), 30, 0);
+
+  {
+    m_iaq_container = lv_obj_create(page_container());
+    lv_obj_add_flag(m_iaq_container, LV_OBJ_FLAG_FLOATING);
+    lv_obj_align(m_iaq_container, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_size(m_iaq_container, 35, 35);
+    lv_obj_add_style(m_iaq_container, Ui::the().style().container(), 0);
+    lv_obj_set_style_bg_opa(m_iaq_container, LV_OPA_100, 0);
+    lv_obj_set_style_bg_color(m_iaq_container, make_color(0x2d, 0xbf, 0x1f), 0);
+    lv_obj_set_style_radius(m_iaq_container, LV_RADIUS_CIRCLE, 0);
+
+    m_iaq_label = headline3(m_iaq_container);
+    lv_label_set_text(m_iaq_label, "2");
+    lv_obj_align(m_iaq_label, LV_ALIGN_CENTER, 0, 0);
+    lv_obj_set_style_text_color(m_iaq_label,
+                                Ui::the().style().colors.on_background, 0);
+  }
 
   // CO2 PPM
   {
@@ -688,7 +705,7 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
     lv_obj_set_flex_flow(cont, LV_FLEX_FLOW_ROW);
     lv_obj_set_flex_align(cont, LV_FLEX_ALIGN_CENTER, LV_FLEX_ALIGN_START,
                           LV_FLEX_ALIGN_START);
-    lv_obj_set_style_pad_column(cont, 20, 0);
+    lv_obj_set_style_pad_column(cont, 30, 0);
 
     // Temperature
     {
@@ -727,13 +744,24 @@ void AirQualityPage::update() {
   lv_label_set_text_fmt(m_temperature, "%.1f", data->temperature());
   lv_label_set_text_fmt(m_humidity, "%.1f", data->humidity());
 
-  if (data->co2_ppm() >= MEDIOCRE_CO2_PPM_LEVEL) {
+  if (data->co2_ppm() >= FINE_CO2_PPM_LIMIT) {
     lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.warning, 0);
-    if (data->co2_ppm() >= BAD_CO2_PPM_LEVEL) {
+    if (data->co2_ppm() >= POOR_CO2_PPM_LIMIT) {
       lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.error, 0);
     }
   } else {
     lv_obj_set_style_text_color(m_co2_ppm,
+                                Ui::the().style().colors.on_background, 0);
+  }
+
+  auto iaq = data->iaq();
+  lv_obj_set_style_bg_color(m_iaq_container, iaq.color, 0);
+  lv_label_set_text_fmt(m_iaq_label, "%d", iaq.index);
+  if (iaq.is_light_color) {
+    lv_obj_set_style_text_color(
+        m_iaq_label, Ui::the().style().colors.on_light_background, 0);
+  } else {
+    lv_obj_set_style_text_color(m_iaq_label,
                                 Ui::the().style().colors.on_background, 0);
   }
 }

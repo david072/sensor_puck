@@ -26,6 +26,7 @@ Ui::Style::Style()
     : colors({
           .background = make_color(0x15),
           .on_background = make_color(0xF6),
+          .on_light_background = make_color(0x0A),
           .primary = make_color(0xFE, 0x44, 0x95),
           .secondary = make_color(0x0B, 0x81, 0x89),
           .caption = make_color(0x6A),

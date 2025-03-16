@@ -9,6 +9,13 @@
 #include <ble_peripheral_manager.h>
 #include <wifi_manager.h>
 
+Iaq Iaq::Excellent = Iaq(1, make_color(0x1A, 0xEE, 0x5D), true);
+Iaq Iaq::Fine = Iaq(2, make_color(0x2D, 0xBF, 0x1F), false);
+Iaq Iaq::Moderate = Iaq(3, make_color(0xFF, 0xD7, 0x22), true);
+Iaq Iaq::Poor = Iaq(4, make_color(0xF4, 0x89, 0x31), false);
+Iaq Iaq::VeryPoor = Iaq(5, make_color(0xFF, 0x35, 0x35), false);
+Iaq Iaq::Severe = Iaq(6, make_color(0xFF, 0x00, 0x00), false);
+
 void UserTimer::recover(int original_duration, int remaining_duration) {
   if (remaining_duration == 0) {
     if (m_timer) {
@@ -253,6 +260,21 @@ void Data::update_humidity(float hum) {
 void Data::update_co2_ppm(u16 co2_ppm) {
   m_co2_ppm = co2_ppm;
   post_environment_data_updated_event();
+}
+
+Iaq Data::iaq() const {
+  if (m_co2_ppm <= EXCELLENT_CO2_PPM_LIMIT)
+    return Iaq::Excellent;
+  if (m_co2_ppm <= FINE_CO2_PPM_LIMIT)
+    return Iaq::Fine;
+  if (m_co2_ppm <= MODERATE_CO2_PPM_LIMIT)
+    return Iaq::Moderate;
+  if (m_co2_ppm <= POOR_CO2_PPM_LIMIT)
+    return Iaq::Poor;
+  if (m_co2_ppm <= VERY_POOR_CO2_PPM_LIMIT)
+    return Iaq::VeryPoor;
+
+  return Iaq::Severe;
 }
 
 void Data::update_history() {

@@ -14,8 +14,11 @@ static constexpr u32 DEEP_SLEEP_DISPLAY_INACTIVITY_MS = 60 * 1000;
 // From a publication of the Umweltbundesamt on indoor CO2 levels (p. 1368,
 // table 4)
 // https://www.umweltbundesamt.de/sites/default/files/medien/pdfs/kohlendioxid_2008.pdf
-static constexpr u32 MEDIOCRE_CO2_PPM_LEVEL = 1000;
-static constexpr u32 BAD_CO2_PPM_LEVEL = 2000;
+static constexpr u32 EXCELLENT_CO2_PPM_LIMIT = 400;
+static constexpr u32 FINE_CO2_PPM_LIMIT = 1000;
+static constexpr u32 MODERATE_CO2_PPM_LIMIT = 1500;
+static constexpr u32 POOR_CO2_PPM_LIMIT = 2000;
+static constexpr u32 VERY_POOR_CO2_PPM_LIMIT = 5000;
 
 // SeeedStudio display schematic:
 // https://files.seeedstudio.com/wiki/round_display_for_xiao/SeeedStudio_Round_Display_for_XIAO_v1.1_SCH_230407.pdf

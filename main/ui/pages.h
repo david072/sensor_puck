@@ -140,6 +140,9 @@ private:
   lv_obj_t* m_co2_ppm;
   lv_obj_t* m_temperature;
   lv_obj_t* m_humidity;
+
+  lv_obj_t* m_iaq_container;
+  lv_obj_t* m_iaq_label;
 };
 
 class CompassPage : public Page {
