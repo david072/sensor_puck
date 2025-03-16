@@ -672,6 +672,8 @@ AirQualityPage::AirQualityPage(lv_obj_t* parent)
     lv_obj_align(m_iaq_label, LV_ALIGN_CENTER, 0, 0);
     lv_obj_set_style_text_color(m_iaq_label,
                                 Ui::the().style().colors.on_background, 0);
+
+    lv_obj_set_style_opa(m_iaq_container, LV_OPA_0, 0);
   }
 
   // CO2 PPM
@@ -758,6 +760,7 @@ void AirQualityPage::update() {
 
   auto iaq = data->iaq();
   lv_obj_set_style_bg_color(m_iaq_container, iaq.color, 0);
+  lv_obj_set_style_opa(m_iaq_container, LV_OPA_100, 0);
   lv_label_set_text_fmt(m_iaq_label, "%d", iaq.index);
   if (iaq.is_light_color) {
     lv_obj_set_style_text_color(
