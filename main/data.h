@@ -58,6 +58,21 @@ public:
         color(color),
         is_light_color(is_light_color) {}
 
+  constexpr bool operator==(Iaq const& other) { return index == other.index; }
+  constexpr bool operator!=(Iaq const& other) {
+    return !(index == other.index);
+  }
+
+  constexpr bool operator<(Iaq const& other) { return index < other.index; }
+  constexpr bool operator<=(Iaq const& other) {
+    return *this < other || *this == other;
+  }
+
+  constexpr bool operator>(Iaq const& other) { return index > other.index; }
+  constexpr bool operator>=(Iaq const& other) {
+    return *this > other || *this == other;
+  }
+
   u8 const index;
   lv_color_t const color;
   bool const is_light_color;
@@ -198,6 +213,7 @@ public:
   float humidity() const { return m_humidity; }
   u16 co2_ppm() const { return m_co2_ppm; }
 
+  Iaq co2_iaq() const;
   Iaq iaq() const;
 
   std::vector<HistoryEntry> history() const;

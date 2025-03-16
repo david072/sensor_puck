@@ -262,7 +262,7 @@ void Data::update_co2_ppm(u16 co2_ppm) {
   post_environment_data_updated_event();
 }
 
-Iaq Data::iaq() const {
+Iaq Data::co2_iaq() const {
   if (m_co2_ppm <= EXCELLENT_CO2_PPM_LIMIT)
     return Iaq::Excellent;
   if (m_co2_ppm <= FINE_CO2_PPM_LIMIT)
@@ -276,6 +276,8 @@ Iaq Data::iaq() const {
 
   return Iaq::Severe;
 }
+
+Iaq Data::iaq() const { return co2_iaq(); }
 
 void Data::update_history() {
   auto save_history_entry = [this](FILE* file = NULL) {

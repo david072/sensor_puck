@@ -10,3 +10,18 @@
 [submodule "components/lis2mdl/lis2mdl_pid"]
 	path = components/lis2mdl/lis2mdl_pid
 	url = https://github.com/STMicroelectronics/lis2mdl-pid
+[submodule "components/sgp41/embedded_i2c_sgp41"]
+	path = components/sgp41/embedded_i2c_sgp41
+	url = https://github.com/Sensirion/embedded-i2c-sgp41
+[submodule "components/sgp41/gas_index_algorithm"]
+	path = components/sgp41/gas_index_algorithm
+	url = https://github.com/Sensirion/gas-index-algorithm
+[submodule "components/sensirion/embedded_i2c_scd4x"]
+	path = components/sensirion/embedded_i2c_scd4x
+	url = https://github.com/Sensirion/embedded-i2c-scd4x
+[submodule "components/sensirion/embedded_i2c_sgp41"]
+	path = components/sensirion/embedded_i2c_sgp41
+	url = https://github.com/Sensirion/embedded-i2c-sgp41
+[submodule "components/sensirion/gas_index_algorithm"]
+	path = components/sensirion/gas_index_algorithm
+	url = https://github.com/Sensirion/gas-index-algorithm

@@ -744,9 +744,11 @@ void AirQualityPage::update() {
   lv_label_set_text_fmt(m_temperature, "%.1f", data->temperature());
   lv_label_set_text_fmt(m_humidity, "%.1f", data->humidity());
 
-  if (data->co2_ppm() >= FINE_CO2_PPM_LIMIT) {
+  auto co2_iaq = data->co2_iaq();
+
+  if (co2_iaq >= Iaq::Moderate) {
     lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.warning, 0);
-    if (data->co2_ppm() >= POOR_CO2_PPM_LIMIT) {
+    if (co2_iaq >= Iaq::VeryPoor) {
       lv_obj_set_style_text_color(m_co2_ppm, Ui::the().style().colors.error, 0);
     }
   } else {

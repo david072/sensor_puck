@@ -40,8 +40,8 @@ constexpr u32 LSM_READ_INTERVAL_MS = 50;
 
 constexpr u32 BEEP_DURATION_MS = 100;
 constexpr u32 BEEP_COUNT = 2;
-constexpr i64 MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 5 * 60 * 1000; // 5min
-constexpr i64 BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS = 1 * 60 * 1000;      // 1min
+constexpr i64 MODERATE_IAQ_BEEP_INTERVAL_MS = 5 * 60 * 1000; // 5min
+constexpr i64 POOR_IAQ_BEEP_INTERVAL_MS = 1 * 60 * 1000;     // 1min
 
 constexpr u32 NFC_DATA_UPDATE_INTERVAL_MS = 10 * 1000;
 constexpr char const* NFC_URL_ADDRESS = "sensor-puck.web.app?d=";
@@ -324,23 +324,21 @@ void buzzer_task(void* arg) {
     }
 
     if ((notified_value & ENVIRONMENT_DATA_UPDATED_BIT) != 0) {
-      auto co2 = Data::the()->co2_ppm();
+      auto iaq = Data::the()->iaq();
 
-      if (co2 < FINE_CO2_PPM_LIMIT)
+      if (iaq <= Iaq::Fine)
         goto env_data_updated_end;
 
-      if (co2 >= FINE_CO2_PPM_LIMIT && co2 < POOR_CO2_PPM_LIMIT) {
-        if (last_co2_beep > 0 &&
-            esp_timer_get_time() - last_co2_beep <
-                MEDIOCRE_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+      if (iaq == Iaq::Moderate) {
+        if (last_co2_beep > 0 && esp_timer_get_time() - last_co2_beep <
+                                     MODERATE_IAQ_BEEP_INTERVAL_MS * 1000) {
           goto env_data_updated_end;
         }
       }
 
-      if (co2 >= POOR_CO2_PPM_LIMIT) {
-        if (last_co2_beep > 0 &&
-            esp_timer_get_time() - last_co2_beep <
-                BAD_CO2_PPM_LEVEL_BEEP_INTERVAL_MS * 1000) {
+      if (iaq >= Iaq::Poor) {
+        if (last_co2_beep > 0 && esp_timer_get_time() - last_co2_beep <
+                                     POOR_IAQ_BEEP_INTERVAL_MS * 1000) {
           goto env_data_updated_end;
         }
       }
@@ -517,7 +515,7 @@ bool perform_environment_check_with_notification_interrupt() {
 
   update_nfc_data();
 
-  if (Data::the()->co2_ppm() >= POOR_CO2_PPM_LIMIT)
+  if (Data::the()->iaq() >= Iaq::VeryPoor)
     return false;
 
   return true;
