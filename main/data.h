@@ -218,6 +218,8 @@ public:
   u16 co2_ppm() const { return m_co2_ppm; }
 
   Iaq co2_iaq() const;
+  Iaq voc_iaq() const;
+  Iaq nox_iaq() const;
   Iaq iaq() const;
 
   std::vector<HistoryEntry> history() const;

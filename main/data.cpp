@@ -273,22 +273,39 @@ void Data::update_nox_index(u16 nox_index) {
   post_environment_data_updated_event();
 }
 
-Iaq Data::co2_iaq() const {
-  if (m_co2_ppm <= EXCELLENT_CO2_PPM_LIMIT)
+Iaq iaq_from_iaq_limits(u16 value, IaqLimits const& limits) {
+  if (value <= limits.excellent)
     return Iaq::Excellent;
-  if (m_co2_ppm <= FINE_CO2_PPM_LIMIT)
+  if (value <= limits.fine)
     return Iaq::Fine;
-  if (m_co2_ppm <= MODERATE_CO2_PPM_LIMIT)
+  if (value <= limits.moderate)
     return Iaq::Moderate;
-  if (m_co2_ppm <= POOR_CO2_PPM_LIMIT)
+  if (value <= limits.poor)
     return Iaq::Poor;
-  if (m_co2_ppm <= VERY_POOR_CO2_PPM_LIMIT)
+  if (value <= limits.very_poor)
     return Iaq::VeryPoor;
 
   return Iaq::Severe;
 }
 
-Iaq Data::iaq() const { return co2_iaq(); }
+Iaq Data::co2_iaq() const {
+  return iaq_from_iaq_limits(m_co2_ppm, CO2_PPM_LIMITS);
+}
+
+Iaq Data::voc_iaq() const {
+  return iaq_from_iaq_limits(m_voc_index, VOC_INDEX_LIMITS);
+}
+
+Iaq Data::nox_iaq() const {
+  return iaq_from_iaq_limits(m_nox_index, NOX_INDEX_LIMITS);
+}
+
+Iaq Data::iaq() const {
+  auto co2 = co2_iaq();
+  auto voc = voc_iaq();
+  auto nox = nox_iaq();
+  return MAX(co2, MAX(voc, nox));
+}
 
 void Data::update_history() {
   auto save_history_entry = [this](FILE* file = NULL) {
