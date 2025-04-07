@@ -19,6 +19,7 @@
 #include <lvgl.h>
 #include <mbedtls/base64.h>
 #include <scd41.h>
+#include <sgp41.h>
 #include <st25dv.h>
 #include <stdio.h>
 #include <ui/pages.h>
@@ -34,6 +35,8 @@ constexpr u64 WAKEUP_PERIOD_MS = 60 * 1000;
 
 constexpr u32 ENV_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 ENV_READ_INTERVAL_MS = 5 * 1000;
+// Should be the same as the sampling interval of the gas index algorithm
+constexpr u32 SGP_READ_INTERVAL_MS = 1000;
 
 constexpr u32 LSM_TASK_STACK_SIZE = 5 * 1024;
 constexpr u32 LSM_READ_INTERVAL_MS = 50;
@@ -77,6 +80,9 @@ struct EnvironmentData {
 
 RTC_DATA_ATTR EnvironmentData rtc_env_data = {};
 RTC_DATA_ATTR bool rtc_check_env_only = false;
+
+RTC_DATA_ATTR bool rtc_did_condition_sgp41 = false;
+RTC_DATA_ATTR Sgp41::GasIndexAlgorithm rtc_sgp41_gia = {};
 
 template <typename T>
 void num_to_bytes(u8* buf, size_t& idx, T num, i64 width) {
@@ -211,6 +217,62 @@ void environment_read_task(void* arg) {
   vTaskDelete(NULL);
 }
 
+void sgp_read_task(void* arg) {
+  Sgp41 sgp(g_i2c_handle);
+
+  if (!rtc_did_condition_sgp41) {
+    rtc_did_condition_sgp41 = true;
+
+    rtc_sgp41_gia.initialize(SGP_READ_INTERVAL_MS / 1000.f);
+    sgp.turn_heater_off();
+
+    ESP_LOGI("SGP41", "Performing conditioning. Waiting for temperature and "
+                      "humidity data to be available...");
+
+    // wait for data to be available before adding a history entry
+    esp_event_handler_t handler = [](void* user_data, esp_event_base_t, i32,
+                                     void*) {
+      xTaskNotify(static_cast<TaskHandle_t>(user_data), 1,
+                  eSetValueWithOverwrite);
+    };
+
+    esp_event_handler_register(DATA_EVENT_BASE,
+                               Data::Event::EnvironmentDataUpdated, handler,
+                               xTaskGetCurrentTaskHandle());
+    ulTaskNotifyTake(true, portMAX_DELAY);
+    esp_event_handler_unregister(DATA_EVENT_BASE,
+                                 Data::Event::EnvironmentDataUpdated, handler);
+
+    float temperature, humidity;
+    {
+      auto d = Data::the();
+      temperature = d->temperature();
+      humidity = d->humidity();
+    }
+    ESP_LOGI("SGP41", "Conditioning with %.2f°C and %.2f%% RH ...", temperature,
+             humidity);
+    sgp.perform_conditioning(temperature, humidity);
+    ESP_LOGI("SGP41", "Conditioning done!");
+  }
+
+  while (true) {
+    {
+      auto d = Data::the();
+      auto values = sgp.read(d->temperature(), d->humidity(), rtc_sgp41_gia);
+      if (values) {
+        d->update_voc_index(values->voc_index);
+        d->update_nox_index(values->nox_index);
+      } else {
+        ESP_LOGE("SGP41", "Failed reading sensor!");
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(SGP_READ_INTERVAL_MS));
+  }
+
+  vTaskDelete(NULL);
+}
+
 void lsm_read_task(void* arg) {
   DeepSleepPreparation deep_sleep;
 
@@ -225,13 +287,12 @@ void lsm_read_task(void* arg) {
 
       if (accel_gyro && mag) {
         auto mag_vec = Vector3(-mag->x, -mag->z, -mag->y);
+        // printf("(%.4f, %.4f, %.4f)\n", mag_vec.x, mag_vec.y, mag_vec.z);
+
         data->update_inertial_measurements(
             Vector3(-accel_gyro->acc_y, accel_gyro->acc_z, -accel_gyro->acc_x),
             Vector3(accel_gyro->roll, accel_gyro->yaw, accel_gyro->pitch),
             mag_vec);
-
-        // printf("dir: %.2f°\n", atan2f(mag_vec.z, mag_vec.x) * RAD_TO_DEG);
-        // printf("(%.6f, %.6f, %.6f)\n", mag_vec.x, mag_vec.y, mag_vec.z);
       } else {
         if (!accel_gyro)
           ESP_LOGW("LSM", "Failed reading sensor!");
@@ -667,6 +728,8 @@ extern "C" void app_main() {
 
   ESP_LOGI("Setup", "Starting sensor tasks");
   xTaskCreate(environment_read_task, "ENV SENS", ENV_TASK_STACK_SIZE, NULL,
+              ENV_TASK_PRIORITY, NULL);
+  xTaskCreate(sgp_read_task, "SGP41", ENV_TASK_STACK_SIZE, NULL,
               ENV_TASK_PRIORITY, NULL);
   xTaskCreate(lsm_read_task, "LSM6DSOX", LSM_TASK_STACK_SIZE, NULL,
               LSM_TASK_PRIORITY, NULL);

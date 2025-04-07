@@ -29,20 +29,23 @@
  * POSSIBILITY OF SUCH DAMAGE.
  */
 
-#include "sensirion_i2c_hal.h"
-#include "sensirion_common.h"
+#ifndef SENSIRION_I2C_HAL_H
+#define SENSIRION_I2C_HAL_H
+
 #include "sensirion_config.h"
+#include <driver/i2c_master.h>
+#include <types.h>
 
-#include <freertos/FreeRTOS.h>
-#include <sys/unistd.h>
+constexpr u32 I2C_TIMEOUT_MS = 50;
 
-/*
- * INSTRUCTIONS
- * ============
- *
- * Implement all functions where they are marked as IMPLEMENT.
- * Follow the function specification in the comments.
- */
+static i2c_master_dev_handle_t g_scd41_device;
+static i2c_master_dev_handle_t g_sgp41_device;
+
+#ifdef __cplusplus
+extern "C" {
+#endif /* __cplusplus */
+
+i2c_master_dev_handle_t* get_device_for_address(u16 address);
 
 /**
  * Select the current i2c bus by index.
@@ -54,25 +57,20 @@
  * @param bus_idx   Bus index to select
  * @returns         0 on success, an error code otherwise
  */
-int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx) { return 0; }
+int16_t sensirion_i2c_hal_select_bus(uint8_t bus_idx);
 
 /**
  * Initialize all hard- and software components that are needed for the I2C
  * communication.
+ *
+ * NOTE: Changed to take necessary arguments to initialize I2C device handle.
  */
-void sensirion_i2c_hal_init(i2c_master_bus_handle_t i2c_handle, u16 address) {
-  i2c_device_config_t dev = {
-      .dev_addr_length = I2C_ADDR_BIT_LEN_7,
-      .device_address = address,
-      .scl_speed_hz = 100000,
-  };
-  ESP_ERROR_CHECK(i2c_master_bus_add_device(i2c_handle, &dev, &g_scd41_device));
-}
+void sensirion_i2c_hal_init(i2c_master_bus_handle_t i2c_handle, u16 address);
 
 /**
  * Release all resources initialized by sensirion_i2c_hal_init().
  */
-void sensirion_i2c_hal_free(void) { i2c_master_bus_rm_device(g_scd41_device); }
+void sensirion_i2c_hal_free(void);
 
 /**
  * Execute one read transaction on the I2C bus, reading a given number of bytes.
@@ -84,9 +82,7 @@ void sensirion_i2c_hal_free(void) { i2c_master_bus_rm_device(g_scd41_device); }
  * @param count   number of bytes to read from I2C and store in the buffer
  * @returns 0 on success, error code otherwise
  */
-int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
-  return i2c_master_receive(g_scd41_device, data, count, I2C_TIMEOUT_MS);
-}
+int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count);
 
 /**
  * Execute one write transaction on the I2C bus, sending a given number of
@@ -100,18 +96,28 @@ int8_t sensirion_i2c_hal_read(uint8_t address, uint8_t* data, uint16_t count) {
  * @returns 0 on success, error code otherwise
  */
 int8_t sensirion_i2c_hal_write(uint8_t address, uint8_t const* data,
-                               uint16_t count) {
-  return i2c_master_transmit(g_scd41_device, data, count, I2C_TIMEOUT_MS);
-}
+                               uint16_t count);
 
 /**
  * Sleep for a given number of microseconds. The function should delay the
- * execution for at least the given time, but may also sleep longer.
+ * execution approximately, but no less than, the given time.
  *
+ * When using hardware i2c:
  * Despite the unit, a <10 millisecond precision is sufficient.
+ *
+ * When using software i2c:
+ * The precision needed depends on the desired i2c frequency, i.e. should be
+ * exact to about half a clock cycle (defined in
+ * `SENSIRION_I2C_CLOCK_PERIOD_USEC` in `sensirion_sw_i2c_gpio.h`).
+ *
+ * Example with 400kHz requires a precision of 1 / (2 * 400kHz) == 1.25usec.
  *
  * @param useconds the sleep time in microseconds
  */
-void sensirion_i2c_hal_sleep_usec(uint32_t useconds) {
-  vTaskDelay(pdMS_TO_TICKS(useconds / 1000));
+void sensirion_i2c_hal_sleep_usec(uint32_t useconds);
+
+#ifdef __cplusplus
 }
+#endif /* __cplusplus */
+
+#endif /* SENSIRION_I2C_HAL_H */

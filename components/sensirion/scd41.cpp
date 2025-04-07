@@ -4,10 +4,11 @@
 #include <esp_log.h>
 #include <freertos/FreeRTOS.h>
 
-Scd41::Scd41(i2c_master_bus_handle_t i2c_handle, u16 address) {
-  sensirion_i2c_hal_init(i2c_handle, address);
+Scd41::Scd41(i2c_master_bus_handle_t i2c_handle) {
+  sensirion_i2c_hal_init(i2c_handle, DEFAULT_ADDRESS);
 
   // clean up potential SCD41 states
+  scd4x_init(DEFAULT_ADDRESS);
   scd4x_wake_up();
   scd4x_stop_periodic_measurement();
   scd4x_reinit();
@@ -21,7 +22,7 @@ void Scd41::start_low_power_periodic_measurement() {
 
 std::optional<Scd41::Data> Scd41::read() {
   bool data_ready;
-  if (auto res = scd4x_get_data_ready_flag(&data_ready); res != 0) {
+  if (auto res = scd4x_get_data_ready_status(&data_ready); res != 0) {
     ESP_LOGE("SCD41", "Getting data ready flag failed: %d", res);
     return std::nullopt;
   }

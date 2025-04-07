@@ -189,7 +189,8 @@ void Data::update_inertial_measurements(Vector3 accel, Vector3 gyro,
                                         Vector3 mag) {
   m_gyroscope = low_pass_filter(gyro, m_gyroscope, 0.5);
   m_acceleration = low_pass_filter(accel, m_acceleration, 0.8);
-  m_magnetic = low_pass_filter(mag + HARD_IRON_OFFSET, m_magnetic, 0.25);
+  m_magnetic = low_pass_filter((mag + HARD_IRON_OFFSET) * SOFT_IRON_OFFSET,
+                               m_magnetic, 0.25);
 
   m_compass_heading =
       atan2f(m_magnetic.x, m_magnetic.z) * RAD_TO_DEG + COMPASS_HEADING_OFFSET;
@@ -259,6 +260,16 @@ void Data::update_humidity(float hum) {
 
 void Data::update_co2_ppm(u16 co2_ppm) {
   m_co2_ppm = co2_ppm;
+  post_environment_data_updated_event();
+}
+
+void Data::update_voc_index(u16 voc_index) {
+  m_voc_index = voc_index;
+  post_environment_data_updated_event();
+}
+
+void Data::update_nox_index(u16 nox_index) {
+  m_nox_index = nox_index;
   post_environment_data_updated_event();
 }
 

@@ -18,7 +18,7 @@ public:
     float humidity;
   };
 
-  Scd41(i2c_master_bus_handle_t i2c_handle, u16 address = DEFAULT_ADDRESS);
+  Scd41(i2c_master_bus_handle_t i2c_handle);
 
   void start_periodic_measurement();
   void start_low_power_periodic_measurement();

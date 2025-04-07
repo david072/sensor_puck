@@ -142,14 +142,16 @@ public:
   /// exceeded before allowing SDGs to be detected again
   static constexpr ulong SDG_COOLDOWN_AFTER_UPWARDS_ACCELERATION_MS = 200;
 
-  /// Hard-iron offset for the magnetometer measurements.
+  /// Hard- and soft-iron offset for the magnetometer measurements.
   ///
   /// Determined by moving the device to as many different angles as possible,
-  /// plotting the points and finding the offset of the center of the sphere
-  /// they form.
-  static constexpr Vector3 HARD_IRON_OFFSET = Vector3(-.08f, .06f, -.17f);
+  /// plotting the points and finding the offset and scale of the ellipsoid they
+  /// form.
+  static constexpr Vector3 HARD_IRON_OFFSET = Vector3(-.387f, .25f, .35f);
+  static constexpr Vector3 SOFT_IRON_OFFSET =
+      Vector3(1.f / 1.12f, 1.f / 1.3f, 1.f / 1.3f);
   /// Angle the compass heading is rotated by.
-  static constexpr float COMPASS_HEADING_OFFSET = 10.f;
+  static constexpr float COMPASS_HEADING_OFFSET = 0.f;
 
   static constexpr char const* HISTORY_FILE_PATH = BASE_PATH "/history";
   static constexpr i64 TIME_BETWEEN_HISTORY_ENTRIES_S = 30 * 60;
@@ -180,6 +182,8 @@ public:
   void update_temperature(float temp);
   void update_humidity(float hum);
   void update_co2_ppm(u16 co2_ppm);
+  void update_voc_index(u16 voc_index);
+  void update_nox_index(u16 nox_index);
 
   static tm get_time();
   static tm get_utc_time();
@@ -269,7 +273,14 @@ private:
   /// %
   float m_humidity = 0;
   /// ppm
-  u16 m_co2_ppm;
+  u16 m_co2_ppm = 0;
+
+  /// VOC (volatile organic compounds) index. Unitless and ranges from 0 (best)
+  /// to 500 (worst). 100 is average.
+  u16 m_voc_index = 0;
+  /// NOx (nitrogen oxides) index. Unitless and ranges from 0 (best) to 500
+  /// (worst). 1 is average.
+  u16 m_nox_index = 0;
 };
 
 /// Counting semaphore to keep track of how many tasks need to perform an action

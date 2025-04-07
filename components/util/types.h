@@ -56,6 +56,10 @@ struct Vector3 {
 
   constexpr Vector3 operator*(float s) { return Vector3(x * s, y * s, z * s); }
   constexpr Vector3 operator*=(float s) { return *this * s; }
+  constexpr Vector3 operator*(Vector3 const& other) {
+    return Vector3(x * other.x, y * other.y, z * other.z);
+  }
+  constexpr Vector3 operator*=(Vector3 const& other) { return *this * other; }
 
   constexpr Vector3 operator/(float s) { return Vector3(x / s, y / s, z / s); }
   constexpr Vector3 operator/=(float s) { return *this / s; }
