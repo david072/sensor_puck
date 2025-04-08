@@ -94,6 +94,30 @@ bool UserTimer::is_running() const {
   return xTimerIsTimerActive(m_timer);
 }
 
+void UserStopwatch::resume() {
+  m_start_ms = millis();
+  m_running = true;
+}
+
+void UserStopwatch::pause() {
+  m_previously_elapsed_ms = elapsed_ms();
+  m_running = false;
+}
+
+void UserStopwatch::reset() {
+  m_start_ms = 0;
+  m_previously_elapsed_ms = 0;
+  m_running = false;
+}
+
+int UserStopwatch::elapsed_ms() const {
+  if (!m_running)
+    return m_previously_elapsed_ms;
+  return m_previously_elapsed_ms + (millis() - m_start_ms);
+}
+
+bool UserStopwatch::is_running() const { return m_running; }
+
 void initialize_nvs_flash() {
   ESP_LOGI("Data", "Initializing NVS Flash");
   auto ret = nvs_flash_init();

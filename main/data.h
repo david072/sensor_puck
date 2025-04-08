@@ -33,6 +33,23 @@ private:
   int m_original_duration = 0;
 };
 
+class UserStopwatch {
+public:
+  void resume();
+  void pause();
+  void reset();
+
+  int elapsed_ms() const;
+  bool is_running() const;
+
+private:
+  /// This keeps track of the amount of milliseconds elapsed before the
+  /// stopwatch was paused, to allow properly resuming later.
+  int m_previously_elapsed_ms = 0;
+  int m_start_ms = 0;
+  bool m_running = false;
+};
+
 void initialize_nvs_flash();
 
 /// Apply voltage transformation of the voltage divider on the battery read
@@ -145,8 +162,8 @@ public:
   /// Hard- and soft-iron offset for the magnetometer measurements.
   ///
   /// Determined by moving the device to as many different angles as possible,
-  /// plotting the points and finding the offset and scale of the ellipsoid they
-  /// form.
+  /// plotting the points and finding the offset and scale of the ellipsoid
+  /// they form.
   static constexpr Vector3 HARD_IRON_OFFSET = Vector3(-.387f, .25f, .35f);
   static constexpr Vector3 SOFT_IRON_OFFSET =
       Vector3(1.f / 1.12f, 1.f / 1.3f, 1.f / 1.3f);
@@ -202,6 +219,7 @@ public:
   static bool wifi_enabled();
 
   UserTimer& user_timer() { return m_user_timer; }
+  UserStopwatch& user_stopwatch() { return m_user_stopwatch; }
 
   void set_muted(bool muted);
   bool muted() { return m_muted; }
@@ -242,6 +260,7 @@ private:
   // Lock m_lvgl_lock;
 
   UserTimer m_user_timer;
+  UserStopwatch m_user_stopwatch;
 
   bool m_muted;
 
@@ -277,20 +296,20 @@ private:
   /// ppm
   u16 m_co2_ppm = 0;
 
-  /// VOC (volatile organic compounds) index. Unitless and ranges from 0 (best)
-  /// to 500 (worst). 100 is average.
+  /// VOC (volatile organic compounds) index. Unitless and ranges from 0
+  /// (best) to 500 (worst). 100 is average.
   u16 m_voc_index = 0;
   /// NOx (nitrogen oxides) index. Unitless and ranges from 0 (best) to 500
   /// (worst). 1 is average.
   u16 m_nox_index = 0;
 };
 
-/// Counting semaphore to keep track of how many tasks need to perform an action
-/// before deep sleep can be entered.
+/// Counting semaphore to keep track of how many tasks need to perform an
+/// action before deep sleep can be entered.
 static SemaphoreHandle_t s_prepare_deep_sleep_counter;
 /// Event group where the first x bits, where x is the count of
-/// g_prepare_deep_sleep_counter, indicate which tasks are ready for deep sleep.
-/// When all x bits are set, we can safely enter deep sleep.
+/// g_prepare_deep_sleep_counter, indicate which tasks are ready for deep
+/// sleep. When all x bits are set, we can safely enter deep sleep.
 static EventGroupHandle_t s_deep_sleep_ready_event_group;
 
 /// Helper struct for tasks to report when they are ready for deep sleep.

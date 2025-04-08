@@ -23,6 +23,7 @@
 #include <st25dv.h>
 #include <stdio.h>
 #include <ui/pages.h>
+#include <ui/timer_page.h>
 #include <ui/ui.h>
 #include <vector>
 

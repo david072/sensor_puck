@@ -29,12 +29,12 @@ void Sgp41::GasIndexAlgorithm::reset() {
 Sgp41::Sgp41(i2c_master_bus_handle_t i2c_handle, u16 address) {
   sensirion_i2c_hal_init(i2c_handle, address);
 
-  u16 serial_number[3];
-  if (auto error = sgp41_get_serial_number(serial_number); error != 0) {
-    ESP_LOGE("SGP41", "Error getting serial number: %d", error);
-  }
-  ESP_LOGI("SGP41", "Serial number: 0x%04x%04x%04x", serial_number[0],
-           serial_number[1], serial_number[2]);
+  // u16 serial_number[3];
+  // if (auto error = sgp41_get_serial_number(serial_number); error != 0) {
+  //   ESP_LOGE("SGP41", "Error getting serial number: %d", error);
+  // }
+  // ESP_LOGI("SGP41", "Serial number: 0x%04x%04x%04x", serial_number[0],
+  //          serial_number[1], serial_number[2]);
 }
 
 void Sgp41::perform_conditioning(float temperature, float humidity) {
