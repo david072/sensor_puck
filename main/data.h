@@ -35,6 +35,9 @@ private:
 
 class UserStopwatch {
 public:
+  void recover(int previously_elapsed_ms, long long start_timestamp,
+               bool running);
+
   void resume();
   void pause();
   void reset();
@@ -42,11 +45,14 @@ public:
   int elapsed_ms() const;
   bool is_running() const;
 
+  long long start_timestamp_ms() const { return m_start_timestamp_ms; }
+  int previously_elapsed_ms() const { return m_previously_elapsed_ms; }
+
 private:
   /// This keeps track of the amount of milliseconds elapsed before the
   /// stopwatch was paused, to allow properly resuming later.
   int m_previously_elapsed_ms = 0;
-  int m_start_ms = 0;
+  long long m_start_timestamp_ms = 0;
   bool m_running = false;
 };
 

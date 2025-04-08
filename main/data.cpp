@@ -94,8 +94,21 @@ bool UserTimer::is_running() const {
   return xTimerIsTimerActive(m_timer);
 }
 
+long long timestamp_in_ms() {
+  struct timeval current_time;
+  gettimeofday(&current_time, NULL);
+  return current_time.tv_sec * 1000 + current_time.tv_usec / 1000;
+}
+
+void UserStopwatch::recover(int previously_elapsed_ms,
+                            long long start_timestamp, bool running) {
+  m_previously_elapsed_ms = previously_elapsed_ms;
+  m_start_timestamp_ms = start_timestamp;
+  m_running = running;
+}
+
 void UserStopwatch::resume() {
-  m_start_ms = millis();
+  m_start_timestamp_ms = timestamp_in_ms();
   m_running = true;
 }
 
@@ -105,7 +118,7 @@ void UserStopwatch::pause() {
 }
 
 void UserStopwatch::reset() {
-  m_start_ms = 0;
+  m_start_timestamp_ms = 0;
   m_previously_elapsed_ms = 0;
   m_running = false;
 }
@@ -113,7 +126,7 @@ void UserStopwatch::reset() {
 int UserStopwatch::elapsed_ms() const {
   if (!m_running)
     return m_previously_elapsed_ms;
-  return m_previously_elapsed_ms + (millis() - m_start_ms);
+  return m_previously_elapsed_ms + (timestamp_in_ms() - m_start_timestamp_ms);
 }
 
 bool UserStopwatch::is_running() const { return m_running; }

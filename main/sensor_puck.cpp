@@ -70,7 +70,14 @@ struct DeepSleepTimer {
   int remaining_timer_duration = 0;
 };
 
+struct DeepSleepStopwatch {
+  int previously_elapsed_ms = 0;
+  long start_timestamp = 0;
+  bool is_running = false;
+};
+
 RTC_DATA_ATTR DeepSleepTimer deep_sleep_timer = DeepSleepTimer{};
+RTC_DATA_ATTR DeepSleepStopwatch deep_sleep_stopwatch = DeepSleepStopwatch{};
 
 struct EnvironmentData {
   bool has_values = false;
@@ -512,6 +519,17 @@ void enter_deep_sleep(bool sparse = false) {
       deep_sleep_timer = DeepSleepTimer{};
     }
 
+    // save stopwatch state
+    if (d->user_stopwatch().elapsed_ms() > 0) {
+      deep_sleep_stopwatch.start_timestamp =
+          d->user_stopwatch().start_timestamp_ms();
+      deep_sleep_stopwatch.previously_elapsed_ms =
+          d->user_stopwatch().previously_elapsed_ms();
+      deep_sleep_stopwatch.is_running = d->user_stopwatch().is_running();
+    } else {
+      deep_sleep_stopwatch = DeepSleepStopwatch{};
+    }
+
     if (!sparse) {
       set_display_backlight(false);
       clear_display();
@@ -548,7 +566,20 @@ void recover_from_sleep() {
   }
   }
 
+  ESP_LOGI("Stopwatch recovery", "prev el: %d, st ts: %ld, running: %d",
+           deep_sleep_stopwatch.previously_elapsed_ms,
+           deep_sleep_stopwatch.start_timestamp,
+           deep_sleep_stopwatch.is_running);
+  if (deep_sleep_stopwatch.is_running)
+    if (deep_sleep_stopwatch.start_timestamp >= 0) {
+      Data::the()->user_stopwatch().recover(
+          deep_sleep_stopwatch.previously_elapsed_ms,
+          deep_sleep_stopwatch.start_timestamp,
+          deep_sleep_stopwatch.is_running);
+    }
+
   deep_sleep_timer = DeepSleepTimer{};
+  deep_sleep_stopwatch = DeepSleepStopwatch{};
 }
 
 void pull_rtc_environment_data() {
