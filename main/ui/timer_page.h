@@ -78,7 +78,9 @@ public:
     int m_original_timer_duration = 0;
     int m_previous_timer_duration = 0;
 
-    lv_obj_t* m_arc;
+    lv_obj_t* m_timer_arc;
+    lv_obj_t* m_stopwatch_arc;
+
     lv_timer_t* m_blink_timer;
   };
 

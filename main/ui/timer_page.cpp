@@ -359,20 +359,30 @@ TimerPage::ModeSelectScreen::ModeSelectScreen(
 
 TimerPage::TimerOverlay::TimerOverlay(lv_obj_t* parent)
     : Overlay(parent, UPDATE_INTERVAL_MS) {
-  m_arc = lv_arc_create(page_container());
-  lv_arc_set_rotation(m_arc, 270);
-  lv_arc_set_bg_angles(m_arc, 0, 360);
-  lv_obj_remove_style(m_arc, NULL, LV_PART_KNOB);
-  lv_obj_remove_style(m_arc, NULL, LV_PART_MAIN);
-  lv_obj_remove_flag(m_arc, LV_OBJ_FLAG_CLICKABLE);
-  lv_obj_set_style_arc_width(m_arc, 5, LV_PART_INDICATOR);
-  lv_obj_set_style_arc_color(m_arc, Ui::the().style().colors.primary,
-                             LV_PART_INDICATOR);
-  lv_obj_set_size(m_arc, lv_pct(100), lv_pct(100));
-  lv_obj_center(m_arc);
+  auto make_arc = [](lv_obj_t* parent, lv_color_t color) {
+    auto* arc = lv_arc_create(parent);
+    lv_obj_remove_style(arc, NULL, LV_PART_KNOB);
+    lv_obj_remove_style(arc, NULL, LV_PART_MAIN);
+    lv_obj_remove_flag(arc, LV_OBJ_FLAG_CLICKABLE);
 
-  lv_arc_set_value(m_arc, 100);
-  lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+    lv_obj_set_style_arc_width(arc, 5, LV_PART_INDICATOR);
+    lv_obj_set_style_arc_color(arc, color, LV_PART_INDICATOR);
+
+    lv_arc_set_rotation(arc, 270);
+    lv_arc_set_bg_angles(arc, 0, 360);
+    lv_obj_set_size(arc, lv_pct(100), lv_pct(100));
+    lv_obj_center(arc);
+
+    return arc;
+  };
+
+  m_timer_arc = make_arc(page_container(), Ui::the().style().colors.primary);
+  m_stopwatch_arc =
+      make_arc(page_container(), Ui::the().style().colors.warning);
+
+  lv_arc_set_value(m_timer_arc, 100);
+  lv_obj_add_flag(m_timer_arc, LV_OBJ_FLAG_HIDDEN);
+  lv_obj_add_flag(m_stopwatch_arc, LV_OBJ_FLAG_HIDDEN);
 
   esp_event_handler_register(
       DATA_EVENT_BASE, Data::Event::UserTimerStarted,
@@ -391,7 +401,7 @@ TimerPage::TimerOverlay::TimerOverlay(lv_obj_t* parent)
           lv_obj_add_flag(obj, LV_OBJ_FLAG_HIDDEN);
         }
       },
-      BLINK_TIMER_PERIOD_MS, m_arc);
+      BLINK_TIMER_PERIOD_MS, m_timer_arc);
   lv_timer_pause(m_blink_timer);
   lv_timer_set_auto_delete(m_blink_timer, false);
 
@@ -413,15 +423,25 @@ void TimerPage::TimerOverlay::update() {
   auto d = Data::the();
   if (d->user_timer().is_running() && m_original_timer_duration != 0) {
     auto remaining = d->user_timer().remaining_duration_ms();
-    lv_arc_set_value(m_arc, 100 * remaining / m_original_timer_duration);
-    lv_obj_remove_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+    lv_arc_set_value(m_timer_arc, 100 * remaining / m_original_timer_duration);
+    lv_obj_remove_flag(m_timer_arc, LV_OBJ_FLAG_HIDDEN);
   } else {
     // only hide the arc once, to allow e.g. blinking of the arc to indicate the
     // timer having expired
     if (d->user_timer().remaining_duration_ms() == 0 &&
         m_previous_timer_duration != 0) {
-      lv_arc_set_value(m_arc, 100);
-      lv_obj_add_flag(m_arc, LV_OBJ_FLAG_HIDDEN);
+      lv_arc_set_value(m_timer_arc, 100);
+      lv_obj_add_flag(m_timer_arc, LV_OBJ_FLAG_HIDDEN);
+    }
+  }
+
+  if (d->user_stopwatch().is_running()) {
+    auto remaining_in_minute = d->user_stopwatch().elapsed_ms() % (60 * 1000);
+    lv_arc_set_value(m_stopwatch_arc, 100 * remaining_in_minute / (60 * 1000));
+    lv_obj_remove_flag(m_stopwatch_arc, LV_OBJ_FLAG_HIDDEN);
+  } else {
+    if (d->user_stopwatch().elapsed_ms() == 0) {
+      lv_obj_add_flag(m_stopwatch_arc, LV_OBJ_FLAG_HIDDEN);
     }
   }
 
